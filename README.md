@@ -6,7 +6,7 @@ notes on repositories:
 
 The `comparison_branch` contains:
 * `-dtimings` option to print each pass duration:
-    ```
+```
 ../boot/ocamlrun ../ocamlopt -strict-sequence -w +33..39 -g -warn-error A -bin-annot -nostdlib -safe-string `./Compflags pervasives.cmx` -c -dtimings pervasives.ml
 clambda(pervasives.ml): 0.004s
 all: 0.092s
