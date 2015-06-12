@@ -1,0 +1,39 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+	node [shape = doublecircle]; Début Fin Rien Sous_application;
+	node [shape = circle];
+        Début -> Connu [ label = "paramètre connu" ];
+        Début -> Rien [ label = "paramètre inconnu" ];
+        Connu -> Direct [ label = "appel direct" ];
+        Connu -> Surapplication [ label = "sur-application" ];
+        Surapplication -> Début [ label = "découpe application" ];
+        Connu -> Sous_application [ label = "sous-application" ];
+        Direct -> Non_rec [ label = "non récursive" ];
+        Direct -> Récursive [ label = "récursive" ];
+	Non_rec -> Non_rec2 [ label = "plus petite qu'un seuil" ];
+	Non_rec -> Non_rec2 [ label = "ressemble à un foncteur" ];
+        Non_rec2 -> Essaie [ label = "inline" ];
+        Essaie -> Fin [ label = "suffisament bon" ];
+        Essaie -> Continue [ label = "sinon" ];
+        Continue -> Continue2 [ label = "inline les fils (seuil plus petit)" ];
+        Continue2 -> Fin [ label = "suffisament bon" ];
+        Continue2 -> Rien [ label = "sinon" ];
+        Direct -> Forcé [ label = "inline forcé (stub)" ];
+        Forcé -> Fin [ label = "inline" ];
+        Non_rec -> Rien [ label = "sinon" ];
+
+        Récursive -> Unroll [ label = "plus petite qu'un seuil (et -unroll)" ];
+        Récursive -> Récursive2 [ label = "sinon" ];
+
+        Unroll -> Unroll2 [ label = "inline" ];
+        Unroll2 -> Fin [ label = "suffisament bon" ];
+        Unroll2 -> Récursive2 [ label = "sinon" ];
+
+        Récursive2 -> Récursive3 [ label = "spécialisable (paramètres constants)" ];
+        Récursive2 -> Rien  [ label = "sinon" ];
+
+        Récursive3 -> Récursive4 [ label = "duplique et spécialise" ];
+        Récursive4 -> Fin [ label = "suffisament bon" ];
+        Récursive4 -> Rien [ label = "sinon" ];
+}

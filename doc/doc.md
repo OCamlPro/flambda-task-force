@@ -168,6 +168,160 @@ Ne peut pas être inliné par Closure à cause de la définition de `g`. C'est
 le cas qui a justifié la majorité des changements dans la représentation
 intermédiaire. La majorité des foncteurs rentrent dans ce cas.
 
+=== Fonction d'ordre supérieur
+
+Dans un cas comme
+
+```
+let map_couple f (a, b) =
+  f a, f b
+
+let succ x = x + 1
+
+let c = map_couple succ (1, 2)
+```
+
+L'appel de iter_couple peut ici être inliné. Dans ce cas `succ` peut
+être inliné dans le corps de `map_couple`.
+
+=== Fonctions récursives
+
+Les fonctions récursives peuvent être soit spécialisées soit inlinées.
+
+==== Spécialisation
+
+La spécialisation copie le code complet de la fonction au site d'appel
+et propage certaines informations. Pour éviter de spécialiser du code
+qui n'en profiteraient pas, cela n'est fait que quand l'on a pu
+prouver que la fonction garde certains arguments constant et qu'il y a
+des informations pertinentes pour ces arguments. Par exemple pour list iter
+
+```
+let rec iter f l =
+  match l with
+  | [] -> ()
+  | h :: t ->
+    f h;
+    iter f t
+```
+
+L'argument f est constant. Cette information est détectée syntaxiquement.
+(Par Flambdautils.unchanging_params_in_recursion)
+
+```
+let do_iter f =
+  iter f [1;2;3]
+```
+
+Dans ce contexte, aucune information n'est connue sur f, iter ne peut donc
+pas y être spécialisée.
+
+```
+let rec iter_swap f g l =
+  match l with
+  | [] -> ()
+  | 0 :: t ->
+    iter_swap g f l
+  | h :: t ->
+    f h;
+    iter_swap f g t
+```
+
+Dans cette version f et g sont inversés dans la branche 0. Aucun paramètre
+n'est considérée comme constant.
+
+Ce serait potentiellement interessant dans certain cas de spécialiser une fonction
+comme iter_swap, mais rien n'est fait pour cela pour l'instant.
+
+Quand une fonction est spécialisée de cette manière, les arguments
+constants pour lesquels il y a des informations sont ajoutés au champ
+`cl_specialised_arg` de la cloture
+
+==== Inlining
+
+Dans certains cas, il est plus interessant de dérouler le code de la fonction
+que de la spécialiser. Par exemple
+
+```
+List.map ((+) 1) [1]
+```
+
+Si cette fonction est inlinée, on peut se retouver directement avec `[2]`.
+
+
+=== Choix de l'heuristique
+
+La decision d'inliner ou non une fonction dépend d'un certain nombre de paramêtres.
+
+Voir heuristique.dot
+
+Dans un cas où une fonction peut être inlinée (la fonction est connue
+et appliquée au bon nombre d'arguments),
+
+* Si la fonction est marquée avec l'attribut `stub` (du type `Flambda.function_declaration`)
+  elle est inlinée.
+
+
+sa taille est d'abord
+comparée à un quota, (controlé par le paramètre `-inline`).
+* 
+
+==== Justification de stub
+
+Certaines fonctions peuvent être marquée comme devant toujours être
+inlinées, quelque soit le context. Les fonctions marqués ainsi sont
+celles qui ont une forte probabilité d'améliorer le code. Cette
+annotation existe parce que l'évaluation du bénéfice de l'inlining
+n'est pas forcement suffisant pour toujours les considérer comme à
+réduire. Les cas concernés sont:
+
+* Pas assez de quota.
+  Si le quota d'inlining est épuisé, les fonctions stub sont néamoins inlinées.
+
+* Améliore le contexte.
+  Si mettre dans son contexte la fonction stub n'améliore pas spécialement son
+  code mais améliore le code autour, l'évaluation de bénéfice ne sait pas l'attribuer
+  à cette fonction et ne peut donc pas choisir correctement de garder la version
+  inlinée.
+  Cela arrive typiquement quand le stub se contente de faire des acces à des champs
+  ou n'utilise pas tous ses arguments
+
+```ocaml
+let f a b = a + b
+let g (a, b) = f a b (* stub *)
+
+let v = g (1, 2)
+```
+
+  Si `g` est inlinée le code final pourra être réécrit en `let v = f 1 2`. Cela
+  a permis de supprimer l'allocation du tuple `(1, 2)`.
+
+```ocaml
+let f a b = a + b
+let g a b = f a 1 (* stub *)
+
+let h x =
+  let b = x * 2 in
+  g x b
+```
+
+  Dans ce cas, inliner `g` permet de supprimer la dépendence à `b`.
+
+* Fonctions récursives.
+  Il n'est pas possible forcement possible d'inliner entre fonctions
+  mutuellement récursives, par contre c'est toujours possible avec
+  les stub.
+
+```ocaml
+let rec tak_curried x y z =
+  if x > y then
+    tak(tak (x-1, y, z), tak (y-1, z, x), tak (z-1, x, y))
+  else
+    z
+and tak (x, y, z) = (* stub *)
+  tak_curried x y z
+```
+
 == Tentative de bytecode sur flambda
 
 L'acces aux clotures depuis l'exterieur est problématique en bytecode.
