@@ -272,17 +272,35 @@ et appliquée au bon nombre d'arguments, et pas dans une fonction stub),
   lambda), mais d'autres occurences peuvent apparaître en déplaçant
   des `let`.
 
-* Si l'appel de fonction est à toplevel.
+* Si l'appel de fonction est à toplevel, avec des informations
+  pertinentes pour tous les arguments, alors elle est inlinée
 
 * sa taille est d'abord soustraite au quota, (controlé par le
-paramètre `-inline`). Si ce quota tombe sous 0, il n'y a pas
-d'inlining. Ce test est la uniquement pour limiter le coût de
-l'inlining, il ne devrait pas être utilisé pour controler
-l'agressivité.
+  paramètre `-inline`). Si ce quota tombe sous 0, il n'y a pas
+  d'inlining. Ce test est la uniquement pour limiter le coût de
+  l'inlining, il ne devrait pas être utilisé pour controler
+  l'agressivité.
 
 * Sinon
 
 #### Justification de l'heuristique d'inline toplevel
+
+Un appel de fonction est considérée comme à toplevel si il n'est pas
+dans une déclaration de fonction, dans une branche de if ou match,
+dans une boucle ou dans un handler d'exception ou d'exception
+statique. C'est à dire si cet appel est exécutée exactement une fois
+(à moins d'interruption avant).
+
+De plus l'heuristique ne s'applique que si tous les arguments sont
+statiquement connus et pourvus d'informations pertinentes, et que la
+fonction n'est pas récursive.
+
+Ces applications peuvent en général beaucoup bénéficier d'être
+completement inlinées, car elles vont probablement générer des
+constantes qui profiteront au reste du code.
+
+En général, des applications de foncteurs à toplevel vérifient cet
+ensemble de contraintes.
 
 ... TODO ...
 
