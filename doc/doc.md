@@ -256,15 +256,39 @@ La decision d'inliner ou non une fonction dépend d'un certain nombre de paramê
 Voir heuristique.dot
 
 Dans un cas où une fonction peut être inlinée (la fonction est connue
-et appliquée au bon nombre d'arguments),
+et appliquée au bon nombre d'arguments, et pas dans une fonction stub),
 
 * Si la fonction est marquée avec l'attribut `stub` (du type `Flambda.function_declaration`)
   elle est inlinée.
 
+* Si la fonction est syntaxiquement connue comme ne pouvant être
+  appelée qu'à cet endroit elle est inlinée. Par exemple.
 
-sa taille est d'abord
-comparée à un quota, (controlé par le paramètre `-inline`).
-* 
+```ocaml
+(fun x -> x + 1) 2
+```
+
+  Ce cas particulier serait en pratique supprimé par Simplif (sur le
+  lambda), mais d'autres occurences peuvent apparaître en déplaçant
+  des `let`.
+
+* Si l'appel de fonction est à toplevel.
+
+* sa taille est d'abord soustraite au quota, (controlé par le
+paramètre `-inline`). Si ce quota tombe sous 0, il n'y a pas
+d'inlining. Ce test est la uniquement pour limiter le coût de
+l'inlining, il ne devrait pas être utilisé pour controler
+l'agressivité.
+
+* Sinon
+
+==== Justification de l'heuristique d'inline toplevel
+
+... TODO ...
+
+==== Détail du quota d'inlining (`-inline`)
+
+... TODO ...
 
 ==== Justification de stub
 
@@ -321,6 +345,105 @@ let rec tak_curried x y z =
 and tak (x, y, z) = (* stub *)
   tak_curried x y z
 ```
+
+==== Origine des stubs
+
+Les fonctions annotées comme stub sont celles générées dans un certain
+nombre de cas. C'est en général utilisé pour changer l'ABI d'une
+fonction.
+
+* fonctions tuplifies
+
+```ocaml
+let f (x,y) = x + y
+```
+Réécrit en
+```ocaml
+let rec f (x,y) = internal_f x y (* stub *)
+and internal_f x y = x + y
+```
+
+L'annotation des fonctions tuplifiées est faite par Translcore et la
+fonction intermédiaire est générée dans Closure_conversion (il n'y a
+pas d'annotation `Tupled` sur les fonction en flambda). Pour l'instant
+les seules fonctions qui ne prennent qu'un tuple en argument et qui
+est directement déconstruit dans l'argument. Il n'y a pas de raison de
+se restreindre à ce cas là. Une passe faite plus tard pourrait
+appliquer cette transformation à tout argument qui est un bloc
+déconstruit dans la fonction qui ne s'échappe pas (pour ne pas risquer
+d'avoir à le réallouer).
+
+* argument inutilisés
+
+Si un argument n'est pas utilisé par une
+fonction, un stub l'ignorant est ajouté:
+
+```ocaml
+let rec specialised_map f l = match l with
+  | [] -> []
+  | h :: t -> succ h :: specialised_map f t
+```
+
+```ocaml
+let rec specialised_map_internal l = match l with
+  | [] -> []
+  | h :: t ->
+    succ h :: specialised_map dummy_value t
+and specialised_map f l = specialised_map_internal l (* stub *)
+```
+
+* arguments optionnels par défault
+
+l'optimisation des arguments optionnels avec une valeur par défault a
+été porté sous forme de fonction stub
+
+```ocaml
+let add ?(v=1) n = n + v
+```
+
+```ocaml
+let rec add ?(v=1) n = add_internal v n (* stub *)
+and add_internal v n = n + v
+```
+
+La transformation est faite dans `Simplify.split_default_wrapper` sur
+le lambda code (avant faite sur le lambda dans Closure) qui ajoute une
+annotation la fonction. Dans Closure_conversion l'annotation est
+convertie en annotation stub.
+
+===== Note: Les application partielle ne génèrent pas des fonctions stub
+
+Les applications partielles connues génèrent des fonctions intermédiaires
+```ocaml
+let f x y = x + y
+let g = f 1
+```
+est Réécrit en
+```ocaml
+let f x y = x + y
+let g = fun y -> f 1 y
+```
+
+mais la nouvelle fonction n'est pas annotée comme un stub.  Ce n'est
+pas annoté parce que dans ce cas, nous voulons que `g` puisse être
+spécialisé avec argument qui lui sont déjà passés. Dans ce cas par
+exemple, l'inlining de `f` nous donnera.
+
+```ocaml
+let f x y = x + y
+let g = fun y -> 1 + y
+```
+
+Cela n'aurait pas été possible si `g` était un stub, l'inlining y est
+interdit.
+
+==== Pas d'inlining dans les stubs
+
+Il n'y a pas d'inlining possible à l'interieur des fonctions marquées
+comme stub, y compris d'autre fonctions stub. Cela empèche que
+l'annotation stub s'étende à du code sur lequel il n'est pas sensé
+s'appliquer. Cela empèche aussi de boucler entre des fonctions stubs
+mutuellement récursives.
 
 == Tentative de bytecode sur flambda
 
