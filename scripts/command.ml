@@ -81,3 +81,27 @@ let run_command ?parse_stdout:(flag=false) prog args =
     Printf.eprintf "Command killed with signal %i:\n%s\n%!" n cmd_str;
     assert false
   | Unix.WSTOPPED _n -> assert false
+
+let run_timed_command ?parse_stdout:(flag=false) prog args =
+  let cmd_str = command_to_string args in
+  Printf.printf "Running%s...\n\n%!" cmd_str;
+  let stdout_name, fd_stdout = make_tmp_file ".out" in
+  let out = if flag then fd_stdout else Unix.stdout in
+  let start = Unix.gettimeofday () in
+  let pid = Unix.create_process prog args Unix.stdin out Unix.stderr in
+  Unix.close fd_stdout;
+  let rpid, status = Unix.waitpid [] pid in
+  assert(rpid = pid);
+  let finish = Unix.gettimeofday () in
+  match status with
+  | Unix.WEXITED 0 ->
+    if flag
+    then (Some (input_all_file stdout_name), (finish -. start))
+    else (None, (finish -. start))
+  | Unix.WEXITED n ->
+    Printf.eprintf "Command return code %i:\n%s\n%!" n cmd_str;
+    assert false
+  | Unix.WSIGNALED n ->
+    Printf.eprintf "Command killed with signal %i:\n%s\n%!" n cmd_str;
+    assert false
+  | Unix.WSTOPPED _n -> assert false

@@ -1,6 +1,6 @@
 type configuration = {
   inline: int; (* 0 .. 10 *)
-  rounds: int; (* 0 .. 3 *)
+  rounds: int; (* 0 .. 2 *)
   unroll: int; (* 0 .. 2 *)
   inline_call_cost: int; (* 1 .. 5 *)
   inline_alloc_cost: int; (* 1 .. 15 *)
@@ -20,23 +20,26 @@ let default_configuration = {
   no_functor_heuristic = false;
 }
 
+let to_string conf =
+  let acc = Printf.sprintf "*: timings = %i\n" 1 in
+  let acc = Printf.sprintf "%s*: inline = %i\n" acc conf.inline in
+  let acc = Printf.sprintf "%s*: rounds = %i\n" acc conf.rounds in
+  let acc = Printf.sprintf "%s*: unroll = %i\n" acc conf.unroll in
+  let acc = Printf.sprintf "%s*: inline-call-cost = %i\n" acc conf.inline_call_cost in
+  let acc = Printf.sprintf "%s*: inline-alloc-cost = %i\n" acc conf.inline_alloc_cost in
+  let acc = Printf.sprintf "%s*: inline-prim-cost = %i\n" acc conf.inline_prim_cost in
+  let acc = Printf.sprintf "%s*: inline-branch-cost = %i\n" acc conf.inline_branch_cost in
+  Printf.sprintf "%s*: functor-heuristics = %i" acc
+    (if not conf.no_functor_heuristic then 1 else 0)
+
 let dump_conf_file conf path =
   Printf.printf "Creating %S...\n%!" path;
   let oc = open_out path in
-  Printf.fprintf oc "*: timings = %i\n" 1;
-  Printf.fprintf oc "*: inline = %i\n" conf.inline;
-  Printf.fprintf oc "*: rounds = %i\n" conf.rounds;
-  Printf.fprintf oc "*: unroll = %i\n" conf.unroll;
-  Printf.fprintf oc "*: inline-call-cost = %i\n" conf.inline_call_cost;
-  Printf.fprintf oc "*: inline-alloc-cost = %i\n" conf.inline_alloc_cost;
-  Printf.fprintf oc "*: inline-prim-cost = %i\n" conf.inline_prim_cost;
-  Printf.fprintf oc "*: inline-branch-cost = %i\n" conf.inline_branch_cost;
-  Printf.fprintf oc "*: functor-heuristic = %i" 
-    (if not conf.no_functor_heuristic then 1 else 0);
+  Printf.fprintf oc "%s%!" (to_string conf);
   close_out oc
 
 let conf_descr conf =
-  Printf.sprintf "%s%i%s%i%s%i%s%i%s%i%s%i%s%i%s%b" 
+  Printf.sprintf "%s-%i_%s-%i_%s-%i_%s-%i_%s-%i_%s-%i_%s-%i_%s-%b"
     "inline" conf.inline 
     "rounds" conf.rounds 
     "unroll" conf.unroll 
@@ -59,8 +62,8 @@ let config1 = {
 
 let config2 = {
   inline = 10;
-  rounds = 3;
-  unroll = 2;
+  rounds = 2;
+  unroll = 1;
   inline_call_cost = 5;
   inline_alloc_cost = 15;
   inline_prim_cost = 5;
@@ -123,5 +126,38 @@ let config7 = {
   no_functor_heuristic = false;
 }
 
+let config8 = {
+  inline = 10;
+  rounds = 1;
+  unroll = 0;
+  inline_call_cost = 3;
+  inline_alloc_cost = 3;
+  inline_prim_cost = 3;
+  inline_branch_cost = 10;
+  no_functor_heuristic = true;
+}
+
+let config9 = {
+  inline = 10;
+  rounds = 2;
+  unroll = 1;
+  inline_call_cost = 2;
+  inline_alloc_cost = 7;
+  inline_prim_cost = 3;
+  inline_branch_cost = 5;
+  no_functor_heuristic = true;
+}
+
+let config10 = {
+  inline = 10;
+  rounds = 1;
+  unroll = 0;
+  inline_call_cost = 0;
+  inline_alloc_cost = 0;
+  inline_prim_cost = 0;
+  inline_branch_cost = 0;
+  no_functor_heuristic = true;
+}
+
 let configurations = 
-  [ default_configuration; config1; config2; config3; config4; config5; config6; config7 ]
+  [ default_configuration; config1; config2; config3; config4; config5; config6; config7; config8; config9; config10 ]
