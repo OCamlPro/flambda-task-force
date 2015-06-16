@@ -6,7 +6,7 @@ En particulier il n'y a pas de manière d'inliner une fonction locale.
 C'est cette restriction qui a guidé les principaux changements de
 flambda par rapport à clambda.
 
-== Representation
+## Representation
 
 Essentiellement des lambda termes non typé avec clotures explicite.
 
@@ -16,7 +16,7 @@ soit pas un appel de fonction.
 
 Les points particuliers:
 
-=== Constructions Fset_of_closures Fclosure Fvariable_in_closure
+### Constructions Fset_of_closures Fclosure Fvariable_in_closure
 
 Les clotures sont explicites.
 On peut acceder au contenu des clotures de l'exterieur,
@@ -35,7 +35,7 @@ Si un argument de la fonction est toujours aliasé à une variable,
 cette information peut être stockée dans ce champ. Cela force aussi
 la variable à être disponible dans le scope de la fonction.
 
-=== Utilise un type de variable différent
+### Utilise un type de variable différent
 
 Pour des raisons pratique, il y a le type `Variable.t`. Ce sont des
 variables completement qualifiées. Ça rends des choses plus facile à
@@ -47,7 +47,7 @@ de Variable.t qui servent à acceder aux champs d'une cloture depuis
 l'exterieur. Ils sont sépararé pour éviter des erreurs d'alpha
 renomage.
 
-=== Sous langages
+### Sous langages
 
 La traduction du lambda au flambda n'utilises pas toutes les constructions:
 * set_of_closures, closures, variable_in_closure sont introduites par l'inlining
@@ -57,12 +57,12 @@ La traduction du lambda au flambda n'utilises pas toutes les constructions:
    + une liste de constantes.
 ** conversion de ce format intermediaire vers le clambda
 
-=== Plus de structured_constant
+### Plus de structured_constant
 
 les structured_constant sont déconstruits en makeblock: Une seule
 manière de les gérer. Le retour à clambda les retrouve.
 
-=== constructeur apply
+### constructeur apply
 
 Un seul constructeur apply pour le cas direct et indirect. Les appels
 directs sont juste annotés avec l'identifiant unique de la seule
@@ -85,7 +85,7 @@ Il serait possible d'annoter avec un set de fonctions au lieu d'un
 singleton. Ça pourrait servir par exemple à generer un meilleur call
 si elles ont toute le même nombre d'arguments.
 
-=== Constructions non représentables/restrictions
+### Constructions non représentables/restrictions
 
 ... TODO ... remplir les descriptions:
 
@@ -95,7 +95,7 @@ si elles ont toute le même nombre d'arguments.
 * partie de fonction partagée
 * informations de retour des fonctions restreintes
 
-= Inlining
+# Inlining
 
 Il y a deux moments pour inliner:
 * avant la conversion de clotures:
@@ -114,7 +114,7 @@ d'informations dure à lire), il y a des check assez complets
 (Flambdachecks) qui attrapent à peu près toutes les erreurs de
 manipulation d'environement de fonction.
 
-== Heuristique
+## Heuristique
 
 L'heuristique d'inlining change completement par rapport à celle de closure qui était:
   Si une fonction est plus petite que la taille du call plus le paramètre `-inline` et
@@ -128,7 +128,7 @@ Les différences principales sont:
 3) les fonctions récursives peuvent être 'spécialisées'
 4) les fonctions 'découvertent' après une première passe d'inlining peuvent aussi l'être
 
-=== Choit au site d'appel
+### Choit au site d'appel
 
 Cela a une importance pour les fonctions qui bénéficient beaucoup des informations
 sur leur contexte. Par exemple
@@ -154,7 +154,7 @@ Closure, cela n'était pas forcement très grave, car les chaines d'inlining
 étaient coupées assez vites. Cela a entraîné une certaine habitude à compiler
 avec `-inline 10000` qui n'a pas vraiment de sens raisonnable.
 
-=== Fonctions locales
+### Fonctions locales
 
 Une fonction telle que
 
@@ -168,7 +168,7 @@ Ne peut pas être inliné par Closure à cause de la définition de `g`. C'est
 le cas qui a justifié la majorité des changements dans la représentation
 intermédiaire. La majorité des foncteurs rentrent dans ce cas.
 
-=== Fonction d'ordre supérieur
+### Fonction d'ordre supérieur
 
 Dans un cas comme
 
@@ -184,11 +184,11 @@ let c = map_couple succ (1, 2)
 L'appel de iter_couple peut ici être inliné. Dans ce cas `succ` peut
 être inliné dans le corps de `map_couple`.
 
-=== Fonctions récursives
+### Fonctions récursives
 
 Les fonctions récursives peuvent être soit spécialisées soit inlinées.
 
-==== Spécialisation
+#### Spécialisation
 
 La spécialisation copie le code complet de la fonction au site d'appel
 et propage certaines informations. Pour éviter de spécialiser du code
@@ -237,7 +237,7 @@ Quand une fonction est spécialisée de cette manière, les arguments
 constants pour lesquels il y a des informations sont ajoutés au champ
 `cl_specialised_arg` de la cloture
 
-==== Inlining
+#### Inlining
 
 Dans certains cas, il est plus interessant de dérouler le code de la fonction
 que de la spécialiser. Par exemple
@@ -249,7 +249,7 @@ List.map ((+) 1) [1]
 Si cette fonction est inlinée, on peut se retouver directement avec `[2]`.
 
 
-=== Choix de l'heuristique
+### Choix de l'heuristique
 
 La decision d'inliner ou non une fonction dépend d'un certain nombre de paramêtres.
 
@@ -282,15 +282,15 @@ l'agressivité.
 
 * Sinon
 
-==== Justification de l'heuristique d'inline toplevel
+#### Justification de l'heuristique d'inline toplevel
 
 ... TODO ...
 
-==== Détail du quota d'inlining (`-inline`)
+#### Détail du quota d'inlining (`-inline`)
 
 ... TODO ...
 
-==== Justification de stub
+#### Justification de stub
 
 Certaines fonctions peuvent être marquée comme devant toujours être
 inlinées, quelque soit le context. Les fonctions marqués ainsi sont
@@ -346,7 +346,7 @@ and tak (x, y, z) = (* stub *)
   tak_curried x y z
 ```
 
-==== Origine des stubs
+#### Origine des stubs
 
 Les fonctions annotées comme stub sont celles générées dans un certain
 nombre de cas. C'est en général utilisé pour changer l'ABI d'une
@@ -411,7 +411,7 @@ le lambda code (avant faite sur le lambda dans Closure) qui ajoute une
 annotation la fonction. Dans Closure_conversion l'annotation est
 convertie en annotation stub.
 
-===== Note: Les application partielle ne génèrent pas des fonctions stub
+##### Note: Les application partielle ne génèrent pas des fonctions stub
 
 Les applications partielles connues génèrent des fonctions intermédiaires
 ```ocaml
@@ -437,7 +437,7 @@ let g = fun y -> 1 + y
 Cela n'aurait pas été possible si `g` était un stub, l'inlining y est
 interdit.
 
-==== Pas d'inlining dans les stubs
+#### Pas d'inlining dans les stubs
 
 Il n'y a pas d'inlining possible à l'interieur des fonctions marquées
 comme stub, y compris d'autre fonctions stub. Cela empèche que
@@ -445,7 +445,7 @@ l'annotation stub s'étende à du code sur lequel il n'est pas sensé
 s'appliquer. Cela empèche aussi de boucler entre des fonctions stubs
 mutuellement récursives.
 
-== Tentative de bytecode sur flambda
+## Tentative de bytecode sur flambda
 
 L'acces aux clotures depuis l'exterieur est problématique en bytecode.
 On pourrait rajouter des instructions pour ça dans le bytecode. Mais
