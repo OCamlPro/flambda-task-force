@@ -156,7 +156,9 @@ let create_configuration root_dir compiler_name config =
 let create_configuration_file root_dir compiler_name =
   let compiler_path = Filename.concat root_dir compiler_name in
   let lib_path = Filename.concat compiler_path "lib" in
+  Command.mk_dir lib_path;
   let path = Filename.concat lib_path "ocaml" in
+  Command.mk_dir path;
   let conf_file = Filename.concat path "compiler_configuration" in
   Printf.printf "Creating %S...\n%!" conf_file;
   let oc = open_out conf_file in
