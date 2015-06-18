@@ -281,7 +281,143 @@ et appliquée au bon nombre d'arguments, et pas dans une fonction stub),
   l'inlining, il ne devrait pas être utilisé pour controler
   l'agressivité.
 
-* Sinon
+* Sinon on peut potentiellement inliner la fonction. Il y a un
+  traitement particulier pour les fonction récursives
+
+** Si la fonction n'est pas récursive, alors on tente de l'inliner en
+   empechant tout inlining à l'interieur (sauf les stubs) et on évalue
+   le bénéfice.
+
+*** Si le bénéfice est suffisant, la fonction est gardée inlinée et
+    la boucle de transformation est relancée dessus.
+
+*** Sinon on retente d'inliner la fonction normalement. Chaque sous
+    fonction inlinée consome le quota d'inlining commun. Le résultat
+    est gardé tel quel si le bénéfice est suffisant.
+
+** Si la fonction est récursive
+
+*** Si le quota d'unroll (qui commence à la valeur spécifiée par
+    `-unroll`) est positif, alors un inlining non récursif est tenté.
+    Si le résultat est suffisement bon, il est gardé le quota d'unroll
+    est décrémenté, et la boucle de transformation relancée dessus.
+
+*** Si le quotat est null ou l'unroll n'est pas bénéfique, alors la
+    fonction est considérée pour la spécialisation.
+    Si la fonction peut bénéficier d'une spécialisation alors celle-ci
+    est faite, et le bénéfice est évaluée pour savoir si la version
+    spécialisée est conservée.
+
+* Sinon l'appel est gardé sous sa forme originale.
+
+Cela veut dire que par exemple une configuration ou tous les arguments
+`-inline-*-cost` sont à 0 et `-no-functor-heuristics` est présent,
+quels que soient les autres arguments, une fonction ne pourra être
+inlinées que si cela réduit la taille du code (ou que c'est un stub).
+
+#### Inlining non récursif en 2 passes
+
+L'inlining des fonctions non récursives est séparés en 2 tests pour le
+rendre plus prédictible et assurer des propriétés de monotonies raisonnables.
+
+Si l'inlining d'une fonction est suffisement bénéfique en lui même, cela
+rentrera dans le cas du premier test. Par contre il peut arriver que cela ne
+soit interessant que quand des informations sur des sous appels sont aussi
+propagés. Par exemple:
+
+```ocaml
+let map_tuple f (x,y,z) = (f x, f y, f z)
+let succ_tuple t = map_tuple succ t
+```
+
+`map_tuple` peut ne pas être suffisement interessant à
+inliner suivant les paramètres de compilation, mais si la fonction `f` est
+connue comme étant `succ` cela devient probablement très interessant.
+
+Ce cas sera détecté par la deuxième passe. Le séparer en 2 passes
+permet de s'assurer que décider d'inliner une fonction en profondeur
+n'empèchera jamais la fonction la moins profonde d'être inlinée si
+elle était suffisement bonne. Cela ne devrait pas arriver souvent: la
+fonction de bénéfice est faite pour que si deux choix sont bons
+indépendemment, alors les deux choix combinés sont bons aussi. Mais il
+y a des fonctiosn qui peuvent être inlinées sans suivre la fonction de
+bénéfice: les stubs (dont certains peuvent être annotés par
+l'utilisateur). Ainsi on assure la propriété: augmenter les paramètres
+de l'inlining ne peut faire que aumenter le nombre de fonctions
+inlinées.
+
+Aussi séparer la première passe permet de restructurer un peu le code
+après l'avoir traversé (`Flambdasimplify.lift_lets`).
+
+#### Bénéfice
+
+Pour évaluer si une fonction est interessante à inliner, une simple
+approximation de l'amélioration est calculée. Quand le code de la
+fonction est transformé en propageant les information sur les
+arguments, certaines transformations sont évaluées: les branches
+supprimées, allocations, applications de fonctions et applications
+de primitives supprimées sont comptées. Cela ne représente pas
+directement la réductions des calculs éffectués à l'exécutions car
+ces opérations peuvent être présentes dans des branches.
+
+```ocaml
+let f b x =
+  if b then x + 1
+  else x
+
+let g b = f b 3
+```
+
+Dans ce cas inliner `f` dans `g` permet de retirer 1 primitive.
+
+Dans le cas de branches, le code retiré n'est pas compté comme retiré
+car il n'était pas exécuté de manière sûre.
+
+```ocaml
+let f b x =
+  if b then x + 1
+  else x
+
+let g x = f false 3
+```
+
+Dans ce cas inliner `f` dans `g` permet de retirer 1 branchement
+conditionnel, mais pas de primitive.
+
+Néamoins, cela peut entraîner la suppression de code mort:
+
+```ocaml
+let f b x =
+  let r = x + 1 in
+  if b then r
+  else x
+
+let g x = f false 3
+```
+
+Ici inliner `f` permet aussi de supprimer la définition de `r` d'où
+une primitive.
+
+Au moment d'inliner une fonction, son bénéfice est évalué (l'importance
+de chaque composante est controlable par les paramêtres `-inline-*-cost`)
+... TODO ...
+
+##### Limitations
+
+* Approximation des allocations
+  avant l'unboxing
+  ... TODO ...
+
+* Approximation des primitives
+  ... TODO ...
+
+* Local
+  ... TODO ...
+
+* Besoin de pondérer avec l'espérance du nombre d'évaluation
+  Pour l'instant, le fait d'être dans une boucle ou sous un branchement
+  conditionnel n'a pas d'influence sur l'évaluation du bénéfice. C'est
+  probablement un manque important.
 
 #### Justification de l'heuristique d'inline toplevel
 
@@ -297,12 +433,21 @@ fonction n'est pas récursive.
 
 Ces applications peuvent en général beaucoup bénéficier d'être
 completement inlinées, car elles vont probablement générer des
-constantes qui profiteront au reste du code.
+constantes qui profiteront au reste du code. Par exemple inliner un
+foncteur comme map va permettre à la fois de rendre toutes les
+fonctions déclarée closes et globalement accessibles. Les appels à
+ces fonctions pourront donc être des appels directs et dans certains
+cas aussi inlinés (par exemple Map.S.equal qui peut beaucoup en
+profiter)
 
-En général, des applications de foncteurs à toplevel vérifient cet
-ensemble de contraintes.
+Comme ces bénéfices ne sont pas locaux (ils peuvent même assez souvent
+n'apparaître que dans une autre unitée de compilation), il faut prendre
+le risque d'étendre du code potentiellement inutile. Cette heuristique
+en pratique a l'air de plutôt bien correspondres aux utilisations
+classiques des foncteurs. Elle a aussi l'avantage d'être assez prédictible.
 
-... TODO ...
+Une option est présente pour la désactiver dans les cas où cela déroulerait
+des applications trop agressivement (`-no-functor-heuristics`)
 
 #### Détail du quota d'inlining (`-inline`)
 
