@@ -159,5 +159,27 @@ let config10 = {
   no_functor_heuristic = true;
 }
 
+(* let configurations =  *)
+(*   [ default_configuration; config1; config2; config3; config4; config5; config6; config7; config8; config9; config10 ] *)
+
+(* let configurations =  *)
+(*   configurations @ List.map (fun config -> { config with inline = 20 }) configurations *)
+
+let inline = [ 5; 10; 20; 50 ]
+
+let rounds = [ 1; 2; 3 ]
+
+let unroll = [ 0; 1 ]
+
+let cost = [ (0, 0, 0, 0); (3, 3, 3, 3); (15, 3, 3, 3); (3, 15, 3, 3); (3, 3, 15, 3); (3, 3, 3, 15) ]
+
+let no_funct = [ true; false ]
+
+let product l1 l2 =
+  List.flatten (List.map (fun x -> List.map (fun y -> (x, y)) l2) l1)
+
 let configurations = 
-  [ default_configuration; config1; config2; config3; config4; config5; config6; config7; config8; config9; config10 ]
+  List.map (fun ((((inline, rounds), unroll), (inline_call_cost, inline_alloc_cost, inline_prim_cost, inline_branch_cost)), no_functor_heuristic) ->
+    { inline; rounds; unroll; inline_call_cost; inline_alloc_cost;
+      inline_prim_cost; inline_branch_cost; no_functor_heuristic; }
+) (product (product (product (product inline rounds) unroll) cost) no_funct)

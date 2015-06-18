@@ -53,17 +53,20 @@ let dump_stats oc indent stats =
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "typing" stats.typing;
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "transl" stats.transl;
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "compile_phrases" stats.compile_phrases;
-  Printf.fprintf oc "%s%s: %.2f\n%!" indent "compilation_total_time" (total_compilation_time stats)
+  Printf.fprintf oc "%s%s: %.2f\n%!" indent "compilation_total_time" (total_compilation_time stats);
+  total_compilation_time stats
     
 let dump_results oc map size_st run_time =
-  StringMap.iter (fun file stats ->
+  let compile_time = StringMap.fold (fun file stats acc ->
       Printf.fprintf oc "{ %S ->\n%!" file;
-      dump_stats oc "  " stats;
-      Printf.fprintf oc "}\n%!"
-    ) map;
+      let comp_time = dump_stats oc "  " stats in
+      Printf.fprintf oc "}\n%!";
+      acc +. comp_time
+    ) map 0. in
+  Printf.fprintf oc "compile_time: %f\n%!" compile_time;
   Printf.fprintf oc "size: %s = %i\n%!" size_st.file size_st.size;
   Printf.fprintf oc "strip_size: %s = %i\n%!" size_st.file size_st.strip_size;
-  Printf.fprintf oc "time: %f\n%!" run_time
+  Printf.fprintf oc "cycles: %i\n%!" run_time
 
 let create_empty_time_stats () = 
   { clambda = 0.; generate = 0.; cmm = 0.; assemble = 0.; flambda = 0.; 
@@ -81,6 +84,30 @@ let update_time_stats stats field value = match field with
   | "compile_phrases" -> { stats with compile_phrases = value }
   | _ -> failwith ("wrong scanf field : " ^ field)
 
+let parse_cycles_info output =
+ List.fold_left (fun acc s ->
+      try
+        Scanf.sscanf s  "cycles: %i" (fun value -> value)
+      with Scanf.Scan_failure _ -> acc | End_of_file -> acc
+    ) 0 (Str.split (Str.regexp_string "\n") output)
+
+let get_run_time root_dir compiler_name packet =
+  let test = "00020___why_bf6246_euler003-T-WP_parameter_smallest_divisor.why" in
+  let build_dir = Filename.dirname Sys.executable_name in
+  let src_dir = Filename.concat build_dir ".." in
+  let test_path = Filename.concat src_dir test in
+  let comp_path = Filename.concat root_dir compiler_name in
+  let bin_path = Filename.concat comp_path "bin" in
+  let packet_path = Filename.concat bin_path packet in
+  let operf_path = "/home/michael/.opam/4.02.1/bin/operf" in
+  let output =
+    Command.run_stderr_command ~parse_stdout:true
+                        operf_path
+                        [| operf_path; packet_path; test_path |] in
+  match output with
+  | Some output -> parse_cycles_info output
+  | None -> assert false
+
 let parse_time_info output =
   List.fold_left (fun acc s ->
       try
@@ -95,17 +122,6 @@ let parse_time_info output =
                StringMap.add file (update_time_stats empty field value) acc)
       with Scanf.Scan_failure _ -> acc | End_of_file -> acc
     ) StringMap.empty (Str.split (Str.regexp_string "\n") output)
-
-let get_run_time root_dir compiler_name packet =
-  let test = "00020___why_bf6246_euler003-T-WP_parameter_smallest_divisor.why" in
-  let build_dir = Filename.dirname Sys.executable_name in
-  let src_dir = Filename.concat build_dir ".." in
-  let test_path = Filename.concat src_dir test in
-  let comp_path = Filename.concat root_dir compiler_name in
-  let bin_path = Filename.concat comp_path "bin" in
-  let packet_path = Filename.concat bin_path packet in
-  let _, time =  Command.run_timed_command packet_path [| packet_path; test_path |] in
-  time
 
 let get_time_informations root_dir compiler_name packet conf_str output =
   let res = 

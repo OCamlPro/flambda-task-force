@@ -80,15 +80,22 @@ let create_comp_with_config comp_name comp_url comp_descr comp_version root_dir 
   let comp_dir = create_compiler_dir comp_name comp_version root_dir in
   create_compiler_files_with_config comp_dir comp_name comp_url comp_descr comp_version config
 
-let opam_init_args dir prog =
-  let opam_init_root = Printf.sprintf "--root=%s" dir in
-  [| prog; "init"; "--no-setup";  opam_init_root |]
+let opam_add_repo_args prog root_dir name repo =
+  [| prog; "repository"; "add"; name; repo; "--root"; root_dir |]
 
-let opam_initialization dir =
+let opam_add_repo root_dir name repo =
+  Printf.printf "Adding %s repo...\n%!" name;
+  let prog = "opam" in
+  ignore (Command.run_command prog (opam_add_repo_args prog root_dir name repo))
+
+let opam_init_args dir prog repo =
+  let opam_init_root = Printf.sprintf "--root=%s" dir in
+  [| prog; "init"; "--no-setup";  opam_init_root; "--comp=" ^ Command.comparison_name; "flambda"; repo |]
+
+let opam_initialization dir repo =
   Printf.printf "Initializing opam...\n%!";
   let prog = "opam" in
-  ignore (Command.run_command prog (opam_init_args dir prog))
-        
+  ignore (Command.run_command prog (opam_init_args dir prog repo))
 
 let opam_switch_args comp_name prog =
   [| prog; "switch"; comp_name; "-v" |]
@@ -122,8 +129,8 @@ let opam_remove_packets packets =
 let opam_remove_comp_args compiler_name prog =
   [| prog; "switch"; "remove"; compiler_name; "-y" |]
 
-let opam_remove_compiler compiler_name =
-  opam_switch_comp "system";
+let opam_remove_compiler compiler_name comparison =
+  opam_switch_comp comparison;
   let prog = "opam" in
   ignore (Command.run_command prog (opam_remove_comp_args compiler_name prog))
 
@@ -137,36 +144,31 @@ let opam_depext_arg packets prog =
 let opam_depext packets =
   let prog = "opam" in
   Command.run_command prog (opam_depext_arg packets prog)
-
-let timed_install root_dir compiler_name packet config_str =
-  opam_remove_packets [packet];
-  let output = opam_time_install packet in
-  Measurements.get_time_informations root_dir compiler_name packet config_str output
   
 let create_configuration root_dir compiler_name config =
   let compiler_path = Filename.concat root_dir compiler_name in
-  Command.mk_dir compiler_path;
   let lib_path = Filename.concat compiler_path "lib" in
-  Command.mk_dir lib_path;
   let path = Filename.concat lib_path "ocaml" in
-  Command.mk_dir path;
   let conf_file = Filename.concat path "compiler_configuration" in
   Configuration.dump_conf_file config conf_file
 
-let create_configuration_file root_dir compiler_name =
+let create_empty_configuration_file root_dir compiler_name =
   let compiler_path = Filename.concat root_dir compiler_name in
   let lib_path = Filename.concat compiler_path "lib" in
-  Command.mk_dir lib_path;
   let path = Filename.concat lib_path "ocaml" in
-  Command.mk_dir path;
   let conf_file = Filename.concat path "compiler_configuration" in
   Printf.printf "Creating %S...\n%!" conf_file;
   let oc = open_out conf_file in
   Printf.fprintf oc "*: timings=1";
   close_out oc
 
+let timed_install root_dir compiler_name packet config_str =
+  opam_remove_packets [packet];
+  let output = opam_time_install packet in
+  Measurements.get_time_informations root_dir compiler_name packet config_str output
+
 let timed_install_comparison root_dir compiler_name packet =
-  create_configuration_file root_dir compiler_name;
+  create_empty_configuration_file root_dir compiler_name;
   timed_install root_dir compiler_name packet ""
 
 let timed_install_comparison root_dir compiler_name packet =

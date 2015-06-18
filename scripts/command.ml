@@ -1,5 +1,20 @@
 let debug = ref false
 
+let flambda_archives = "flambda_archives"
+
+let comparison_url = "https://github.com/chambart/ocaml-1/archive/comparison_branch.tar.gz"
+let comparison_local = Filename.concat flambda_archives "comparison_branch.tar.gz"
+let comparison_name = "4.03.0+comparison+gen"
+let comparison_descr = "The comparison branch based on trunk"
+
+let flambda_url = "https://github.com/chambart/ocaml-1/archive/flambda_trunk.tar.gz"
+let flambda_local = Filename.concat flambda_archives "flambda_trunk.tar.gz"
+let flambda_name = "4.03.0+flambda+gen"
+let flambda_descr = "The main flambda developpement branch"
+
+let base_repo_url = "git://github.com/OCamlPro/opam-flambda-repository"
+let overlay_repo_url = "git://github.com/OCamlPro/opam-flambda-repository-overlay"
+
 let rec remove file =
   if Sys.file_exists file
   then
@@ -82,22 +97,20 @@ let run_command ?parse_stdout:(flag=false) prog args =
     assert false
   | Unix.WSTOPPED _n -> assert false
 
-let run_timed_command ?parse_stdout:(flag=false) prog args =
+let run_stderr_command ?parse_stdout:(flag=false) prog args =
   let cmd_str = command_to_string args in
   Printf.printf "Running%s...\n\n%!" cmd_str;
-  let stdout_name, fd_stdout = make_tmp_file ".out" in
-  let out = if flag then fd_stdout else Unix.stdout in
-  let start = Unix.gettimeofday () in
-  let pid = Unix.create_process prog args Unix.stdin out Unix.stderr in
-  Unix.close fd_stdout;
+  let stderr_name, fd_stderr = make_tmp_file ".err" in
+  let err = if flag then fd_stderr else Unix.stderr in
+  let pid = Unix.create_process prog args Unix.stdin Unix.stdout err in
+  Unix.close fd_stderr;
   let rpid, status = Unix.waitpid [] pid in
   assert(rpid = pid);
-  let finish = Unix.gettimeofday () in
   match status with
   | Unix.WEXITED 0 ->
     if flag
-    then (Some (input_all_file stdout_name), (finish -. start))
-    else (None, (finish -. start))
+    then Some (input_all_file stderr_name)
+    else None
   | Unix.WEXITED n ->
     Printf.eprintf "Command return code %i:\n%s\n%!" n cmd_str;
     assert false
