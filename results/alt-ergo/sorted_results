@@ -1,0 +1,867 @@
+397 results found
+1 comparison result found
+results/4.03.0+comparison+gen_alt-ergo_.result
+compile_time: 5.824000
+size: 4893880.000000
+strip_size: 3996200.000000
+cycles: 7762704669.000000
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.104396
+size: 1.109623
+strip_size: 1.042857
+cycles: 1.093647
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.261676
+size: 1.110778
+strip_size: 1.044202
+cycles: 1.093257
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-20_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.557005
+size: 1.135727
+strip_size: 1.074823
+cycles: 1.081706
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.341346
+size: 1.092399
+strip_size: 1.027947
+cycles: 1.074032
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.379121
+size: 1.142722
+strip_size: 1.085265
+cycles: 1.069325
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.231456
+size: 1.114782
+strip_size: 1.050256
+cycles: 1.068060
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.101648
+size: 1.108467
+strip_size: 1.041271
+cycles: 1.053474
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.244505
+size: 1.064559
+strip_size: 1.006790
+cycles: 1.050769
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.839973
+size: 1.057804
+strip_size: 1.000096
+cycles: 1.049634
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.299451
+size: 1.093318
+strip_size: 1.027931
+cycles: 1.049405
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.491758
+size: 1.095996
+strip_size: 1.032431
+cycles: 1.048136
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.843407
+size: 1.090446
+strip_size: 1.025512
+cycles: 1.047988
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.589286
+size: 1.093138
+strip_size: 1.027690
+cycles: 1.045122
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 2.315934
+size: 1.063377
+strip_size: 1.005429
+cycles: 1.044973
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.529533
+size: 1.100105
+strip_size: 1.036146
+cycles: 1.044858
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 3.326923
+size: 1.138884
+strip_size: 1.074054
+cycles: 1.044339
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.495192
+size: 1.063379
+strip_size: 1.005429
+cycles: 1.043512
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.532967
+size: 1.102625
+strip_size: 1.039045
+cycles: 1.042955
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.349588
+size: 1.090381
+strip_size: 1.025496
+cycles: 1.042192
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.250000
+size: 1.107708
+strip_size: 1.040214
+cycles: 1.041325
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 2.089286
+size: 1.120310
+strip_size: 1.058039
+cycles: 1.039007
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.908654
+size: 1.058483
+strip_size: 1.000897
+cycles: 1.038443
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.323489
+size: 1.106647
+strip_size: 1.039253
+cycles: 1.038059
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.876374
+size: 1.111174
+strip_size: 1.049375
+cycles: 1.038042
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.236951
+size: 1.064345
+strip_size: 1.006470
+cycles: 1.037966
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.172390
+size: 1.125706
+strip_size: 1.060313
+cycles: 1.036256
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 7.154533
+size: 1.057834
+strip_size: 1.000112
+cycles: 1.035875
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.832418
+size: 1.092502
+strip_size: 1.028011
+cycles: 1.035779
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.421016
+size: 1.121729
+strip_size: 1.055204
+cycles: 1.035210
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.252747
+size: 1.132237
+strip_size: 1.065614
+cycles: 1.034341
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.099588
+size: 1.106319
+strip_size: 1.038901
+cycles: 1.032860
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.179258
+size: 1.093169
+strip_size: 1.027802
+cycles: 1.032824
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 5.481456
+size: 1.094956
+strip_size: 1.035618
+cycles: 1.031304
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.217033
+size: 1.109301
+strip_size: 1.042232
+cycles: 1.031299
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.464286
+size: 1.092429
+strip_size: 1.027931
+cycles: 1.031215
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.559753
+size: 1.095697
+strip_size: 1.030813
+cycles: 1.031168
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.301511
+size: 1.105381
+strip_size: 1.041063
+cycles: 1.030863
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 3.029533
+size: 1.063403
+strip_size: 1.005445
+cycles: 1.030713
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.115385
+size: 1.107215
+strip_size: 1.039990
+cycles: 1.030416
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.576236
+size: 1.141998
+strip_size: 1.083391
+cycles: 1.029580
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.824176
+size: 1.058228
+strip_size: 1.000865
+cycles: 1.028285
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.280907
+size: 1.093119
+strip_size: 1.027674
+cycles: 1.028132
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.184753
+size: 1.092983
+strip_size: 1.027562
+cycles: 1.027850
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.678571
+size: 1.096645
+strip_size: 1.038148
+cycles: 1.027749
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.479396
+size: 1.089925
+strip_size: 1.024872
+cycles: 1.027692
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.134615
+size: 1.118378
+strip_size: 1.054548
+cycles: 1.027516
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.528159
+size: 1.060631
+strip_size: 1.003219
+cycles: 1.027349
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.565934
+size: 1.132464
+strip_size: 1.065774
+cycles: 1.027271
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.436126
+size: 1.136136
+strip_size: 1.068001
+cycles: 1.027216
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.273352
+size: 1.095157
+strip_size: 1.030269
+cycles: 1.026812
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.282280
+size: 1.107386
+strip_size: 1.039862
+cycles: 1.026678
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.342033
+size: 1.129666
+strip_size: 1.068449
+cycles: 1.026393
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.284341
+size: 1.095375
+strip_size: 1.030429
+cycles: 1.026343
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.526099
+size: 1.095337
+strip_size: 1.030429
+cycles: 1.026219
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.577610
+size: 1.131269
+strip_size: 1.063340
+cycles: 1.025482
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 7.445742
+size: 1.065445
+strip_size: 1.012380
+cycles: 1.025405
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.239698
+size: 1.059799
+strip_size: 1.002114
+cycles: 1.025403
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.455357
+size: 1.094892
+strip_size: 1.031070
+cycles: 1.025399
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.238324
+size: 1.108111
+strip_size: 1.041111
+cycles: 1.025357
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.241758
+size: 1.063356
+strip_size: 1.005413
+cycles: 1.025204
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 4.515110
+size: 1.090593
+strip_size: 1.025640
+cycles: 1.024900
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.568681
+size: 1.113806
+strip_size: 1.051361
+cycles: 1.024800
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.367445
+size: 1.106396
+strip_size: 1.042873
+cycles: 1.024742
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.287088
+size: 1.099494
+strip_size: 1.035025
+cycles: 1.024592
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.083104
+size: 1.063354
+strip_size: 1.005413
+cycles: 1.024503
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 3.379808
+size: 1.106705
+strip_size: 1.044346
+cycles: 1.024251
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.516484
+size: 1.059804
+strip_size: 1.002114
+cycles: 1.023930
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.116758
+size: 1.118388
+strip_size: 1.051601
+cycles: 1.023735
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 2.652473
+size: 1.101714
+strip_size: 1.044218
+cycles: 1.023585
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.133929
+size: 1.132312
+strip_size: 1.066944
+cycles: 1.023574
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.772665
+size: 1.092789
+strip_size: 1.028603
+cycles: 1.023067
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.572802
+size: 1.059799
+strip_size: 1.002114
+cycles: 1.022591
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.276786
+size: 1.106325
+strip_size: 1.038901
+cycles: 1.022565
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.574863
+size: 1.135163
+strip_size: 1.073894
+cycles: 1.022056
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.482830
+size: 1.093812
+strip_size: 1.028475
+cycles: 1.022007
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.076923
+size: 1.063351
+strip_size: 1.005413
+cycles: 1.021407
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.357143
+size: 1.089789
+strip_size: 1.024760
+cycles: 1.021358
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.263049
+size: 1.135819
+strip_size: 1.070435
+cycles: 1.021099
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.055632
+size: 1.063349
+strip_size: 1.005413
+cycles: 1.021021
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.528159
+size: 1.095550
+strip_size: 1.030701
+cycles: 1.020424
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 4.527473
+size: 1.129706
+strip_size: 1.071924
+cycles: 1.020372
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.432692
+size: 1.092122
+strip_size: 1.027834
+cycles: 1.020186
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 5.544643
+size: 1.109699
+strip_size: 1.049423
+cycles: 1.020004
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.177198
+size: 1.119220
+strip_size: 1.053187
+cycles: 1.019849
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 2.207418
+size: 1.114112
+strip_size: 1.048414
+cycles: 1.019836
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.306319
+size: 1.124413
+strip_size: 1.058776
+cycles: 1.019672
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.260989
+size: 1.114290
+strip_size: 1.047469
+cycles: 1.019400
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 4.532967
+size: 1.105276
+strip_size: 1.043706
+cycles: 1.019326
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.473901
+size: 1.057786
+strip_size: 1.000080
+cycles: 1.019157
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.380495
+size: 1.092726
+strip_size: 1.028587
+cycles: 1.019019
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 5.472527
+size: 1.122664
+strip_size: 1.066880
+cycles: 1.018990
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 4.548077
+size: 1.090609
+strip_size: 1.025672
+cycles: 1.018591
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 3.514423
+size: 1.060031
+strip_size: 1.002354
+cycles: 1.017941
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.989698
+size: 1.059809
+strip_size: 1.002114
+cycles: 1.017517
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.544643
+size: 1.093325
+strip_size: 1.027931
+cycles: 1.017318
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.120192
+size: 1.107365
+strip_size: 1.039846
+cycles: 1.017118
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.875687
+size: 1.146022
+strip_size: 1.087315
+cycles: 1.016783
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.269918
+size: 1.107890
+strip_size: 1.040807
+cycles: 1.016621
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.423764
+size: 1.120739
+strip_size: 1.059705
+cycles: 1.016489
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.873626
+size: 1.057788
+strip_size: 1.000080
+cycles: 1.016183
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.341346
+size: 1.057782
+strip_size: 1.000080
+cycles: 1.016085
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.826236
+size: 1.089933
+strip_size: 1.024872
+cycles: 1.016013
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 3.540522
+size: 1.059807
+strip_size: 1.002114
+cycles: 1.015970
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.527473
+size: 1.057783
+strip_size: 1.000080
+cycles: 1.015894
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.150412
+size: 1.129541
+strip_size: 1.062475
+cycles: 1.015892
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.287775
+size: 1.098230
+strip_size: 1.033920
+cycles: 1.015888
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.035714
+size: 1.107243
+strip_size: 1.039750
+cycles: 1.015624
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 7.373626
+size: 1.079736
+strip_size: 1.026729
+cycles: 1.015489
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.122940
+size: 1.110507
+strip_size: 1.047245
+cycles: 1.015424
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.554258
+size: 1.126105
+strip_size: 1.058760
+cycles: 1.015097
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-20_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.207418
+size: 1.157088
+strip_size: 1.091511
+cycles: 1.015040
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 5.103022
+size: 1.059820
+strip_size: 1.002114
+cycles: 1.014420
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.100275
+size: 1.127882
+strip_size: 1.060858
+cycles: 1.014418
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.337912
+size: 1.102796
+strip_size: 1.039974
+cycles: 1.014089
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.295330
+size: 1.059795
+strip_size: 1.002114
+cycles: 1.013617
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-1_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.264423
+size: 1.095370
+strip_size: 1.030541
+cycles: 1.013586
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.102335
+size: 1.064340
+strip_size: 1.006470
+cycles: 1.013170
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.067308
+size: 1.106183
+strip_size: 1.038789
+cycles: 1.012773
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.169643
+size: 1.059794
+strip_size: 1.002114
+cycles: 1.012371
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 7.833791
+size: 1.100594
+strip_size: 1.053331
+cycles: 1.011888
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.364698
+size: 1.128876
+strip_size: 1.066079
+cycles: 1.011364
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.125687
+size: 1.114280
+strip_size: 1.047469
+cycles: 1.011165
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 2.295330
+size: 1.064366
+strip_size: 1.006486
+cycles: 1.011111
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.296703
+size: 1.060006
+strip_size: 1.002338
+cycles: 1.011027
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 2.522665
+size: 1.057811
+strip_size: 1.000096
+cycles: 1.010933
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.581044
+size: 1.084983
+strip_size: 1.026906
+cycles: 1.010697
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 2.541209
+size: 1.063356
+strip_size: 1.005301
+cycles: 1.010265
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.501374
+size: 1.090438
+strip_size: 1.025512
+cycles: 1.010187
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-0_call-cost-3_alloc-cost-15_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.489698
+size: 1.093830
+strip_size: 1.028507
+cycles: 1.009104
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 4.697802
+size: 1.057809
+strip_size: 1.000096
+cycles: 1.009089
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.566621
+size: 1.060010
+strip_size: 1.002338
+cycles: 1.009066
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.772665
+size: 1.094901
+strip_size: 1.031070
+cycles: 1.008953
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 4.712225
+size: 1.058504
+strip_size: 1.000913
+cycles: 1.006419
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.180632
+size: 1.103978
+strip_size: 1.039942
+cycles: 1.006119
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.504121
+size: 1.058480
+strip_size: 1.000897
+cycles: 1.006117
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-2_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.211538
+size: 1.094613
+strip_size: 1.029548
+cycles: 1.005404
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.081044
+size: 1.107068
+strip_size: 1.039862
+cycles: 1.004669
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 4.407280
+size: 1.101792
+strip_size: 1.038917
+cycles: 1.004505
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 5.221154
+size: 1.066396
+strip_size: 1.008040
+cycles: 1.002139
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.460852
+size: 1.110525
+strip_size: 1.046380
+cycles: 1.001938
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-0_alloc-cost-0_prim-cost-0_branch-cost-0_nofunctorheuristic-true.result
+compile_time: 1.220467
+size: 1.063359
+strip_size: 1.005413
+cycles: 1.001881
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 3.167582
+size: 1.071121
+strip_size: 1.012412
+cycles: 1.000918
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 2.030907
+size: 1.066163
+strip_size: 1.007815
+cycles: 1.000516
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 1.502060
+size: 1.071132
+strip_size: 1.012412
+cycles: 1.000415
+results/4.03.0+comparison+gen_alt-ergo_.result
+compile_time: 1.000000
+size: 1.000000
+strip_size: 1.000000
+cycles: 1.000000
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.765110
+size: 1.092288
+strip_size: 1.027979
+cycles: 0.999357
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.094093
+size: 1.107421
+strip_size: 1.040326
+cycles: 0.998798
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-1_alloc-cost-1_prim-cost-1_branch-cost-1_nofunctorheuristic-true.result
+compile_time: 7.186126
+size: 1.063544
+strip_size: 1.005461
+cycles: 0.997833
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-3_alloc-cost-3_prim-cost-3_branch-cost-15_nofunctorheuristic-true.result
+compile_time: 1.760989
+size: 1.096416
+strip_size: 1.032911
+cycles: 0.997707
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.307005
+size: 1.116212
+strip_size: 1.051281
+cycles: 0.997451
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.538462
+size: 1.122076
+strip_size: 1.058119
+cycles: 0.995628
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.815934
+size: 1.116534
+strip_size: 1.053363
+cycles: 0.994903
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-0_call-cost-3_alloc-cost-3_prim-cost-15_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.083104
+size: 1.117177
+strip_size: 1.050384
+cycles: 0.993437
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-0_call-cost-20_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.373626
+size: 1.140948
+strip_size: 1.078955
+cycles: 0.992943
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.094093
+size: 1.135366
+strip_size: 1.069202
+cycles: 0.992278
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-1_unroll-1_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.173077
+size: 1.140657
+strip_size: 1.077225
+cycles: 0.988174
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-1_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.528846
+size: 1.152718
+strip_size: 1.087683
+cycles: 0.987281
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.521291
+size: 1.099504
+strip_size: 1.035025
+cycles: 0.985519
+results/4.03.0+flambda+gen_alt-ergo_inline-5_rounds-3_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.394918
+size: 1.108879
+strip_size: 1.045195
+cycles: 0.982362
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.241071
+size: 1.128786
+strip_size: 1.064445
+cycles: 0.982226
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.498626
+size: 1.124819
+strip_size: 1.064782
+cycles: 0.981347
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-0_call-cost-20_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.621566
+size: 1.154132
+strip_size: 1.094121
+cycles: 0.979737
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-0_call-cost-20_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.887363
+size: 1.146021
+strip_size: 1.086370
+cycles: 0.979443
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-0_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 4.332418
+size: 1.123678
+strip_size: 1.061787
+cycles: 0.978603
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-3_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.817995
+size: 1.130133
+strip_size: 1.072757
+cycles: 0.973736
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-2_unroll-1_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.603022
+size: 1.151860
+strip_size: 1.093817
+cycles: 0.971764
+results/4.03.0+flambda+gen_alt-ergo_inline-10_rounds-1_unroll-1_call-cost-15_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 1.256868
+size: 1.149615
+strip_size: 1.086370
+cycles: 0.966878
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-1_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 3.331044
+size: 1.161693
+strip_size: 1.096684
+cycles: 0.962108
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-3_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.585165
+size: 1.140796
+strip_size: 1.090534
+cycles: 0.957150
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-2_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 5.531593
+size: 1.141597
+strip_size: 1.087795
+cycles: 0.954137
+results/4.03.0+flambda+gen_alt-ergo_inline-20_rounds-2_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 2.033654
+size: 1.146966
+strip_size: 1.088196
+cycles: 0.953557
+results/4.03.0+flambda+gen_alt-ergo_inline-50_rounds-3_unroll-1_call-cost-10_alloc-cost-3_prim-cost-3_branch-cost-3_nofunctorheuristic-true.result
+compile_time: 8.394918
+size: 1.126609
+strip_size: 1.082831
+cycles: 0.942046
