@@ -310,11 +310,6 @@ et appliquée au bon nombre d'arguments, et pas dans une fonction stub),
 
 * Sinon l'appel est gardé sous sa forme originale.
 
-Cela veut dire que par exemple une configuration ou tous les arguments
-`-inline-*-cost` sont à 0 et `-no-functor-heuristics` est présent,
-quels que soient les autres arguments, une fonction ne pourra être
-inlinées que si cela réduit la taille du code (ou que c'est un stub).
-
 #### Inlining non récursif en 2 passes
 
 L'inlining des fonctions non récursives est séparés en 2 tests pour le
@@ -399,25 +394,77 @@ Ici inliner `f` permet aussi de supprimer la définition de `r` d'où
 une primitive.
 
 Au moment d'inliner une fonction, son bénéfice est évalué (l'importance
-de chaque composante est controlable par les paramêtres `-inline-*-cost`)
-... TODO ...
+de chaque composante est controlable par les paramêtres `-inline-*-cost`).
+Si `taille du code original` - (`taille du nouveau code` + `bénéfice`) est
+inférieur ou égale à zero.
+
+Mettre le paramètre '-inline-prim-cost' à `n` veut donc dire qu'on est
+prêt à augmenter la taille du code de `n` (dans une unitée arbitraire
+de taille de code) pour chaque primitive supprimée de l'exécution.
+
+Cela veut dire que par exemple une configuration ou tous les arguments
+`-inline-*-cost` sont à 0 et `-no-functor-heuristics` est présent,
+quels que soient les autres arguments, une fonction ne pourra être
+inlinées que si cela réduit la taille du code (ou que c'est un stub).
+
+Le paramètre '-inline-call-cost' correspond globalement au paramètre
+`-inline` de closure (à un facteur constant (8) pret).
 
 ##### Limitations
 
-* Approximation des allocations
-  avant l'unboxing
-  ... TODO ...
+* Réduire les allocations peut avoir un effet assez bénéfique, ce qui
+  justicie de compter les allocation séparément des autres primitives,
+  mais ce n'est pas possible de facilement toutes les compter. Les
+  principale limitations viennent du fait que certaines allocations
+  sont potentiellement supprimées à postériori:
+  ** Les blocs constants sont alloués statiquement (et clotures)
+  ** Les nombres boxés peuvent être déboxés
 
-* Approximation des primitives
-  ... TODO ...
+  Ceci pourrait être amélioré (entre autre choses) si la gestion du boxing
+  était faite au niveau du flambda.
 
-* Local
-  ... TODO ...
+* Toutes les primitives (non allocations) sont considérées avec le même coût,
+  alors que certaines sont beaucoup plus cher que d'autres.
+
+  Il pourrait y avoir une table des coût pour certaines primitives (en
+  particuliers pour des external C pure)
+
+* Le compte des améliorations est très local. Il est possible
+  par exemple que la suppression d'une branche supprime du code mort,
+  qui ne soit pas directement dans la fonction inlinée.
+
+  ```ocaml
+  let f b x y =
+    if b
+    then x
+    else fst y
+
+  let g x =
+    let a = x + 1 in
+    let b = (x,x) in
+    f true a b
+  ```
+
+  Ici inliner `f` dans `g` va permetre de supprimer `b` et son
+  allocation, mais cela ne peut être attribué à `f` car c'est hors de
+  son scope. Il serait possible de maintenir des compteurs sur chaque
+  variable pour savoir si une transformation rend une variable morte,
+  mais cela alourdirait la transformation et raterais néamoins un
+  certain nombre de cas.
 
 * Besoin de pondérer avec l'espérance du nombre d'évaluation
   Pour l'instant, le fait d'être dans une boucle ou sous un branchement
   conditionnel n'a pas d'influence sur l'évaluation du bénéfice. C'est
   probablement un manque important.
+
+* L'architecture de la passe rend naturel un ordre de recherche de
+  potentiel inlining, mais dans certains cas, il pourrait être
+  interessant d'évaluer le bénéfice d'inliner certaines fonctions dans
+  un autre ordre. Il serait possible d'appliquer la passe en ne
+  cherchant à inliner qu'une fonction particulière à un site d'appel
+  pour évaluer completement son effet, mais cela aurait probablement
+  un coût prohibitif. Ce serait imaginable pour des builds en temps
+  peu limités
 
 #### Justification de l'heuristique d'inline toplevel
 
@@ -451,7 +498,116 @@ des applications trop agressivement (`-no-functor-heuristics`)
 
 #### Détail du quota d'inlining (`-inline`)
 
-... TODO ...
+Idéalement l'on voudrait pouvoir évaluer tous les choix possible
+d'inlining pour garder ceux interessant, mais cela serait trop cher à
+la compilation. Pour limiter cela, il y a une heuristique (simple)
+pour tenter ce qui a le plus de chance d'être gardé et couper la recherche.
+
+Au démarage la traversée commence avec un quota fixé
+(`-inline`). Quand une fonction est considérée pour l'inlining (pas
+pour celles forcées, telles que les stubs où quand l'heuristique de
+foncteur s'applique), sa taille est soustraite au quota. Si ce quota
+deviens négatif, plus aucune fonction ne peut être inlinée. Ce quota
+est propagé en suivant le parcourt en profondeur de la traversée. Au
+retour au premier choix, le quota est réinitialisé pour les fonctions
+suivantes
+
+```ocaml
+let f g x =
+  let a = g x in
+  let b = g a in
+  a + b
+
+let h g x =
+  let c = f g x in
+  let d = f g 3 in
+  c + d
+
+let i x =
+  h (( * ) 2) x
+```
+
+```ocaml
+let i x =
+  (* quota = original *)
+  let x = x in
+  let g = (( * ) 2) in
+  (* quota = original - size(i) *)
+  (* <- *)
+  let c = f g x in
+  let d = f g 3 in
+  c + d
+```
+
+```ocaml
+let i x =
+  (* quota = original *)
+  let x = x in
+  let g = (( * ) 2) in
+  (* quota = original - size(i) *)
+  let x = x in
+  let g = g in
+  (* quota = original - size(i) - size(f) *)
+  let c =
+    (* <- *)
+    let a = g x in
+    let b = g a in
+    a + b
+  in
+  let d = f g 3 in
+  c + d
+```
+
+```ocaml
+let i x =
+  (* quota = original *)
+  let x = x in
+  let g = (( * ) 2) in
+  (* quota = original - size(i) *)
+  let x = x in
+  let g = g in
+  (* quota = original - size(i) - size(f) *)
+  let c =
+    let a = x * 2 in
+    (* quota = original - size(i) - size(f) - size(g) *)
+    (* <- *)
+    let b = g a in
+    a + b
+  in
+  let d = f g 3 in
+  c + d
+```
+
+Si `original - size(i) - size(f) - size(g)` est négatif, alors la
+traversée n'essaiera pas d'inliner le deuxième appel à `g` et `f`.
+
+Supposons par exemple que le résultat de l'inlining du premier appel à
+`f` ne soit pas suffisement bon. La recherche continuera alors dans
+cet état.
+
+```ocaml
+let i x =
+  (* quota = original *)
+  let x = x in
+  let g = (( * ) 2) in
+  (* quota = original - size(i) *)
+  let c = f g x in
+  (* <- *)
+  let d = f g 3 in
+  c + d
+```
+
+Le dépliage se fera alors sur le second appel à `f` avec le quota
+original. Celui la est appelé sur une constante, le résultat sera donc
+probablement gardé.
+
+##### Choix de la propagation du quota
+
+La propagation se fait en suivant aproximativement l'ordre
+d'évaluation car cela donne une priorité sur les premières fonctions.
+Assez souvent, les fonctions suivantes bénéficient plus si des
+informations précisent sont propagées sur leurs argument, ce qui est
+plus probable si plus de fonctions exécutées avant sont inlinées.
 
 #### Justification de stub
 
@@ -607,6 +763,22 @@ comme stub, y compris d'autre fonctions stub. Cela empèche que
 l'annotation stub s'étende à du code sur lequel il n'est pas sensé
 s'appliquer. Cela empèche aussi de boucler entre des fonctions stubs
 mutuellement récursives.
+
+## Optimisations réalisées durant l'inlining
+
+... TODO ...
+
+### Propagation de constante
+
+... TODO ...
+
+### Elimination de code mort local
+
+... TODO ...
+
+### Résolution d'alias local
+
+... TODO ...
 
 ## Tentative de bytecode sur flambda
 
