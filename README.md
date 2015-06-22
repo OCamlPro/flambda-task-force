@@ -35,3 +35,11 @@ queue.ml: unroll = 1
 ### Code coverage
 
 See: https://github.com/OCamlPro/flambda-task-force/issues/2
+
+### Results
+
+The compiler arguments evaluation results lies in the result/*software* directory. The file name describes the compiler options, the file contains the time taken to compile each file, the overall compilation time, the size of the generated binary, its stripped size and a rought (and noisy) runtime of the binary on some example.
+
+The results on trunk are in the files named "4.03.0+comparison+gen_*software*_.result"
+
+The version on which the test where run is given by the `commit_number` file
