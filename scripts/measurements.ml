@@ -2,7 +2,8 @@ module StringMap = Map.Make(String)
 
 type time_stats = {
   clambda: float;
-  flambda: float;
+  flambda_mid: float;
+  flambda_back: float;
   generate: float;
   cmm: float;
   assemble: float;
@@ -23,29 +24,15 @@ type stats_size = {
   strip_size: int;
 }
 
-let strip path =
-  let strip_path = path ^ ".strip" in
-  ignore (Command.run_command "strip" [| "strip"; "-o"; strip_path; path |]);
-  try (Unix.stat strip_path).Unix.st_size
-  with _ -> -1
-
-let get_bin_size root_dir compiler_name packet =
-  let compiler_path = Filename.concat root_dir compiler_name in
-  let bin_path = Filename.concat compiler_path "bin" in
-  let path = Filename.concat bin_path packet in
-  let strip_size = strip path in
-  try 
-    { file = path; size = (Unix.stat path).Unix.st_size; strip_size }
-  with _ -> {file = path; size = -1; strip_size }
-
 let total_compilation_time stats =
-  stats.clambda +. stats.flambda +. stats.generate +. stats.cmm +.
+  stats.clambda +. stats.flambda_mid +. stats.flambda_back +. stats.generate +. stats.cmm +.
   stats.assemble +. stats.parsing +. stats.typing +. stats.transl +.
   stats.compile_phrases
 
 let dump_stats oc indent stats =
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "clambda" stats.clambda;
-  Printf.fprintf oc "%s%s: %.2f\n%!" indent "flambda" stats.flambda;
+  Printf.fprintf oc "%s%s: %.2f\n%!" indent "flambda-mid" stats.flambda_mid;
+  Printf.fprintf oc "%s%s: %.2f\n%!" indent "flambda-back" stats.flambda_back;
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "generate" stats.generate;
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "cmm" stats.cmm;
   Printf.fprintf oc "%s%s: %.2f\n%!" indent "assemble" stats.assemble;
@@ -68,13 +55,24 @@ let dump_results oc map size_st run_time =
   Printf.fprintf oc "strip_size: %s = %i\n%!" size_st.file size_st.strip_size;
   Printf.fprintf oc "cycles: %i\n%!" run_time
 
+let dump_error res_dir compiler_name packet conf_str output =
+  let res = match output with | None -> "" | Some s -> s in
+  let file_res_name = Printf.sprintf "%s_%s_%s.error" compiler_name packet conf_str in
+  let file_res = Filename.concat res_dir file_res_name in
+  let oc = open_out file_res in
+  Printf.printf "Dumping error in %S...\n%!" file_res;
+  Printf.fprintf oc "%s%!" res;
+  close_out oc
+
 let create_empty_time_stats () = 
-  { clambda = 0.; generate = 0.; cmm = 0.; assemble = 0.; flambda = 0.; 
-    parsing = 0.; typing = 0.; transl = 0.; compile_phrases = 0. }
+  { clambda = 0.; generate = 0.; cmm = 0.; assemble = 0.; flambda_mid = 0.; 
+    flambda_back = 0.; parsing = 0.; typing = 0.; transl = 0.; 
+    compile_phrases = 0. }
   
 let update_time_stats stats field value = match field with
   | "clambda" -> { stats with clambda = value }
-  | "flambda" -> { stats with flambda = value }
+  | "flambda-mid" -> { stats with flambda_mid = value }
+  | "flambda-back" -> { stats with flambda_back = value }
   | "generate" -> { stats with generate = value }
   | "cmm" -> { stats with cmm = value }
   | "assemble" -> { stats with assemble = value }
@@ -91,16 +89,46 @@ let parse_cycles_info output =
       with Scanf.Scan_failure _ -> acc | End_of_file -> acc
     ) 0 (Str.split (Str.regexp_string "\n") output)
 
-let get_run_time root_dir compiler_name packet =
-  let test = "00020___why_bf6246_euler003-T-WP_parameter_smallest_divisor.why" in
+let get_test root_dir compiler_name packet = 
   let build_dir = Filename.dirname Sys.executable_name in
   let src_dir = Filename.concat build_dir ".." in
-  let test_path = Filename.concat src_dir test in
   let comp_path = Filename.concat root_dir compiler_name in
   let bin_path = Filename.concat comp_path "bin" in
-  let packet_path = Filename.concat bin_path packet in
+  match packet with
+    | "alt-ergo" ->  
+      let file = "00020___why_bf6246_euler003-T-WP_parameter_smallest_divisor.why" in
+      Filename.concat src_dir file
+    | "menhir" -> let file = "fancy-parser.mly" in Filename.concat src_dir file
+    | "js_of_ocaml" -> let file = "ocamlc" in Filename.concat bin_path file
+    | "coq.8.4.6~camlp4" -> let file = "Int.v" in Filename.concat src_dir file
+    | _ -> assert false
+  
+let get_bin_name packet = match packet with
+  | "coq.8.4.6~camlp4" -> "coqc"
+  | _ -> packet
+
+let strip path =
+  let strip_path = path ^ ".strip" in
+  ignore (Command.run_command "strip" [| "strip"; "-o"; strip_path; path |]);
+  try (Unix.stat strip_path).Unix.st_size
+  with _ -> -1
+
+let get_bin_size root_dir compiler_name packet =
+  let compiler_path = Filename.concat root_dir compiler_name in
+  let bin_path = Filename.concat compiler_path "bin" in
+  let path = Filename.concat bin_path (get_bin_name packet) in
+  let strip_size = strip path in
+  try 
+    { file = path; size = (Unix.stat path).Unix.st_size; strip_size }
+  with _ -> {file = path; size = -1; strip_size }
+
+let get_run_time root_dir compiler_name packet =
+  let test_path = get_test root_dir compiler_name packet in
+  let comp_path = Filename.concat root_dir compiler_name in
+  let bin_path = Filename.concat comp_path "bin" in
+  let packet_path = Filename.concat bin_path (get_bin_name packet) in
   let operf_path = "/home/michael/.opam/4.02.1/bin/operf" in
-  let output =
+  let output = 
     Command.run_stderr_command ~parse_stdout:true
                         operf_path
                         [| operf_path; packet_path; test_path |] in
@@ -123,7 +151,7 @@ let parse_time_info output =
       with Scanf.Scan_failure _ -> acc | End_of_file -> acc
     ) StringMap.empty (Str.split (Str.regexp_string "\n") output)
 
-let get_time_informations root_dir compiler_name packet conf_str output =
+let get_time_informations root_dir res_dir compiler_name packet conf_str output =
   let res = 
     (match output with 
      | None -> StringMap.empty
@@ -141,9 +169,10 @@ let get_time_informations root_dir compiler_name packet conf_str output =
          parse_time_info output
 	 ) in
   let file_res_name = Printf.sprintf "%s_%s_%s.result" compiler_name packet conf_str in
+  let file_res = Filename.concat res_dir file_res_name in
   let bin_size = get_bin_size root_dir compiler_name packet in
   let run_time = get_run_time root_dir compiler_name packet in
-  let oc = open_out file_res_name in
-  Printf.printf "Dumping results in %S...\n%!" file_res_name;
+  let oc = open_out file_res in
+  Printf.printf "Dumping results in %S...\n%!" file_res;
   dump_results oc res bin_size run_time;
   close_out oc

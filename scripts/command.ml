@@ -12,7 +12,7 @@ let flambda_local = Filename.concat flambda_archives "flambda_trunk.tar.gz"
 let flambda_name = "4.03.0+flambda+gen"
 let flambda_descr = "The main flambda developpement branch"
 
-let base_repo_url = "git://github.com/OCamlPro/opam-flambda-repository"
+let base_repo_url = "https://flambda.ocamlpro.com/opam-flambda-repository/"
 let overlay_repo_url = "git://github.com/OCamlPro/opam-flambda-repository-overlay"
 
 let rec remove file =
@@ -87,15 +87,22 @@ let run_command ?parse_stdout:(flag=false) prog args =
   match status with
   | Unix.WEXITED 0 -> 
     if flag 
-    then Some (input_all_file stdout_name)
-    else None
+    then true, Some (input_all_file stdout_name)
+    else true, None
   | Unix.WEXITED n ->
     Printf.eprintf "Command return code %i:\n%s\n%!" n cmd_str;
-    assert false
+    if flag 
+    then false, Some (input_all_file stdout_name)
+    else false, None
   | Unix.WSIGNALED n ->
     Printf.eprintf "Command killed with signal %i:\n%s\n%!" n cmd_str;
-    assert false
-  | Unix.WSTOPPED _n -> assert false
+    if flag 
+    then false, Some (input_all_file stdout_name)
+    else false, None
+  | Unix.WSTOPPED _n -> 
+    if flag 
+    then false, Some (input_all_file stdout_name)
+    else false, None
 
 let run_stderr_command ?parse_stdout:(flag=false) prog args =
   let cmd_str = command_to_string args in

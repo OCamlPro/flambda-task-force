@@ -120,7 +120,7 @@ let opam_time_install packet =
   Command.run_command ~parse_stdout:true prog args
 
 let opam_remove_args packets prog =
-  Array.append [| prog; "remove" |] (Array.of_list packets)
+  Array.append [| prog; "remove"; "-y" |] (Array.of_list packets)
 
 let opam_remove_packets packets =
   let prog = "opam" in
@@ -162,19 +162,18 @@ let create_empty_configuration_file root_dir compiler_name =
   Printf.fprintf oc "*: timings=1";
   close_out oc
 
-let timed_install root_dir compiler_name packet config_str =
+let timed_install root_dir res_dir compiler_name packet config_str =
   opam_remove_packets [packet];
-  let output = opam_time_install packet in
-  Measurements.get_time_informations root_dir compiler_name packet config_str output
+  let success, output = opam_time_install packet in
+  if success 
+  then Measurements.get_time_informations
+         root_dir res_dir compiler_name packet config_str output
+  else Measurements.dump_error res_dir compiler_name packet config_str output
 
-let timed_install_comparison root_dir compiler_name packet =
+let timed_install_comparison root_dir res_dir compiler_name packet =
   create_empty_configuration_file root_dir compiler_name;
-  timed_install root_dir compiler_name packet ""
-
-let timed_install_comparison root_dir compiler_name packet =
-  timed_install_comparison root_dir compiler_name packet
+  timed_install root_dir res_dir compiler_name packet ""
     
-let timed_install_config root_dir compiler_name packet config =
+let timed_install_config root_dir res_dir compiler_name packet config =
   let config_str = Configuration.conf_descr config in
-  timed_install root_dir compiler_name packet config_str
-    
+  timed_install root_dir res_dir compiler_name packet config_str
