@@ -126,8 +126,7 @@ let lib_size_to_string f sz =
     "<a title=\"cmx: %a, cmxa: %a, cmxs: %a, a: %a)\">%a</a>"
     f sz.cmx f sz.cmxa f sz.cmxs f sz.a f sz.total
 
-let lib_sizes pfx =
-  let s = sizes pfx in
+let lib_sizes s =
   SM.fold (fun f size acc ->
       try
         let lib, f = Scanf.sscanf f "lib/%s@/%s" (fun lib f -> lib, f) in
@@ -143,8 +142,10 @@ let html_head title =
     \  <script src=\"http://www.kryogenix.org/code/browser/sorttable/sorttable.js\"></script>\n\
     \  <style type=\"text/css\"><!--\n\
     \     table { border-collapse: collapse; margin: auto; }\n\
-    \     thead {position:sticky;position:-webkit-sticky;position:-moz-sticky;\
+    \     thead {position:-webkit-sticky;position:-moz-sticky;position:sticky;\
                  top:0;}\n\
+    \     tfoot {position:-webkit-sticky;position:-moz-sticky;position:sticky;\
+                 bottom:0;}\n\
     \     thead th {background-color: #dde;}
     \     td {text-align: right;}\n\
     \     tr:nth-child(odd) {background-color:#eef;}\n\
@@ -156,8 +157,10 @@ let html_head title =
 let () =
   let comparison = all_results "comparison" in
   let flambda = all_results "flambda" in
-  let sizes_comparison = lib_sizes "comparison" in
-  let sizes_flambda = lib_sizes "flambda" in
+  let sizes_comparison = sizes "comparison" in
+  let sizes_flambda = sizes "flambda" in
+  let libsz_comparison = lib_sizes sizes_comparison in
+  let libsz_flambda = lib_sizes sizes_flambda in
   let m = M.merge (fun _ c f -> Some (c,f)) comparison flambda in
   Printf.printf "%s\n<body><table class=\"sortable\">\
                  <thead><tr><th>Package</th><th>reference</th><th>flambda</th>\
@@ -185,19 +188,12 @@ let () =
           else
             let find m = try SM.find pkg m with Not_found -> lib_empty in
             (stc + 1, stf + 1, tc +. c.duration, tf +. f.duration,
-             ls_map2 (+) szc (find sizes_comparison),
-             ls_map2 (+) szf (find sizes_flambda))
+             ls_map2 (+) szc (find libsz_comparison),
+             ls_map2 (+) szf (find libsz_flambda))
         | _ -> acc)
       m (0,0,0.,0.,lib_empty,lib_empty)
   in
   let print_sz i = Printf.sprintf "%d.%02d" (i/1000) (i mod 1000 / 10) in
-  full_line ".TOTAL" ""
-    (Printf.sprintf "%d Ok" total_c) (Printf.sprintf "%d Ok" total_f)
-    time_c time_f (time_f /. time_c)
-    (lib_size_to_string print_sz sz_c)
-    (lib_size_to_string print_sz sz_f)
-    (lib_size_to_string (Printf.sprintf "%.2f")
-       (ls_map2 (fun a b -> float_of_int a /. float_of_int b) sz_f sz_c));
   let dft d o f = match o with None -> d | Some x -> f x in
   M.iter (fun ((name,version),a) (c,f) -> match a with
       | Install | Remove -> ()
@@ -205,10 +201,10 @@ let () =
         match c,f with
         | Some ({status = Ok} as c), Some ({status = Ok} as f) ->
           let sz_comp =
-            try SM.find name sizes_comparison with Not_found -> lib_empty
+            try SM.find name libsz_comparison with Not_found -> lib_empty
           in
           let sz_flam =
-            try SM.find name sizes_flambda with Not_found -> lib_empty
+            try SM.find name libsz_flambda with Not_found -> lib_empty
           in
           full_line name version
             (string_of_status (c.status)) (string_of_status (f.status))
@@ -231,4 +227,39 @@ let () =
                Printf.sprintf "%.3f" r.duration)
     )
     m;
-  Printf.printf "</tbody></table></body></html>\n"
+  Printf.printf "</tbody><tfoot>\n";
+  full_line ".TOTAL" ""
+    (Printf.sprintf "%d Ok" total_c) (Printf.sprintf "%d Ok" total_f)
+    time_c time_f (time_f /. time_c)
+    (lib_size_to_string print_sz sz_c)
+    (lib_size_to_string print_sz sz_f)
+    (lib_size_to_string (Printf.sprintf "%.2f")
+       (ls_map2 (fun a b -> float_of_int a /. float_of_int b) sz_f sz_c));
+  Printf.printf "</tfoot></table>\n<br/><br/><br/>\n";
+  Printf.printf "<table class=\"sortable\"><thead>\
+                 <tr><th>Binary</th><th>ref size (KB)</th>\
+                 <th>flambda size (KB)</th><th>ratio</th></tr></thead>\
+                 <tbody>\n";
+  let tot_c, tot_f =
+    SM.fold (fun f (szc, szf) (tot_c, tot_f) ->
+        if is_prefix "bin/" f then (
+          Printf.printf
+            "<tr><th>%s</th><td>%s</td><td>%s</td><td>%.2f</td></tr>\n"
+            (String.sub f 4 (String.length f - 4))
+            (print_sz szc) (print_sz szf)
+            (float_of_int szf /. float_of_int szc);
+          tot_c + szc, tot_f + szf)
+        else
+          tot_c, tot_f
+      )
+      (SM.merge (fun _ a b -> match a,b with
+         | Some a, Some b -> Some (a,b)
+         | _ -> None)
+        sizes_comparison sizes_flambda)
+      (0,0);
+  in
+  Printf.printf "</tbody><tfoot><tr><th>TOTAL</th>\
+                 <td>%s</td><td>%s</td><td>%.2f</td></tr>\n\
+                 </tfoot></table>"
+    (print_sz tot_c) (print_sz tot_f) (float_of_int tot_f /. float_of_int tot_c);
+  Printf.printf "</body></html>\n"
