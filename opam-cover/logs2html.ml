@@ -5,7 +5,11 @@ type pkg = string * string
 
 type action = Build | Install | Remove
 
-type status = Ok | Failed of string * int | Aborted
+type status =
+  | Ok
+  | Failed of string * int * string list * string list
+  (* cmd, code, stdout, stderr *)
+  | Aborted
 
 type result = {
   status: status;
@@ -38,10 +42,12 @@ let parse_status: J.json -> status = function
   | `String "aborted" -> Aborted
   | `Assoc ["process-error", e] ->
     Failed (JU.to_string (e%"info"%"command"),
-            match e%"code" with
-            | `String s -> int_of_string s
-            | `Int i -> i
-            | _ -> failwith "bad return code")
+            (match e%"code" with
+             | `String s -> int_of_string s
+             | `Int i -> i
+             | _ -> failwith "bad return code"),
+            List.map JU.to_string (JU.to_list (e%"stdout")),
+            List.map JU.to_string (JU.to_list (e%"stderr")))
 
 let parse_result r =
   parse_action (r%"action"),
@@ -49,10 +55,31 @@ let parse_result r =
     duration = try JU.to_float (r%"duration") with Not_found -> 0.;
   }
 
-let string_of_status = function
-  | Ok -> "OK"
-  | Failed (_,i) -> Printf.sprintf "Failure (%d)" i
-  | Aborted -> "Aborted"
+let escape s =
+  let s = Re.replace_string (Re.compile (Re.char '&')) ~by:"&amp;" s in
+  let s = Re.replace_string (Re.compile (Re.char '<')) ~by:"&lt;" s in
+  s
+
+let html_status logs name version sw = function
+  | Some {status = Ok; _} -> logs, "OK"
+  | Some {status = Aborted; _} -> logs, "Aborted"
+  | Some {status = Failed (cmd,i,stdout,stderr); _} ->
+    let id = Printf.sprintf "log-%s-%s-%s" sw name version in
+    Printf.sprintf
+      "<div class=\"logs\" id=\"%s\">\n\
+       <a class=\"close\" href=\"#close\">Close</a>\n\
+       <h3>Error on %s.%s (%s)</h3>\n\
+       <p>Command: <pre>%s</pre></p>
+       <h4>Stdout</h4><pre>%s</pre>\n\
+       <h4>Stderr</h4><pre>%s</pre>\n\
+       </div>\n"
+      id name version sw
+      (escape cmd)
+      (escape (String.concat "\n" stdout))
+      (escape (String.concat "\n" stderr))
+    :: logs,
+    Printf.sprintf "<a href=\"#%s\">Failure (%d)</a>" id i
+  | None -> logs, "-"
 
 let results f =
   let f = JU.to_assoc (J.from_file f) in
@@ -89,16 +116,31 @@ let sizes pfx =
       let ic = open_in f in
       let rec scan acc =
         match input_line ic with
-        | exception End_of_file -> acc
+        | exception End_of_file -> close_in ic; acc
         | s ->
           scan @@
           try Scanf.sscanf s "[ %d] %s" (fun sz f -> SM.add f sz acc)
           with Scanf.Scan_failure _ -> acc
       in
-      let acc = scan acc in
-      close_in ic;
-      acc)
+      scan acc)
     SM.empty (List.sort compare files)
+
+module S = Set.Make(String)
+
+let byte_files pfx =
+  let files = Array.to_list (Sys.readdir Filename.current_dir_name) in
+  let files =
+    let pfx = "byteexec-" in
+    List.filter (fun f -> is_prefix pfx f && extension f = "list") files
+  in
+  List.fold_left (fun acc f ->
+      let ic = open_in f in
+      let rec scan acc = match input_line ic with
+        | exception End_of_file -> close_in ic; acc
+        | s -> scan (S.add s acc)
+      in
+      scan acc)
+    S.empty (List.sort compare files)
 
 type 'a lib_size = { total: 'a; cmxs: 'a; cmx: 'a; cmxa: 'a; a: 'a; }
 
@@ -141,15 +183,21 @@ let html_head title =
     \  <title>%s</title>\n\
     \  <script src=\"http://www.kryogenix.org/code/browser/sorttable/sorttable.js\"></script>\n\
     \  <style type=\"text/css\"><!--\n\
-    \     table { border-collapse: collapse; margin: auto; }\n\
+    \     div {padding:3ex;}\n\
+    \     pre {padding:1ex;border:1px solid grey;background-color:#eee;}\n\
+    \     table {border-collapse:collapse;margin:auto;}\n\
     \     thead {position:-webkit-sticky;position:-moz-sticky;position:sticky;\
                  top:0;}\n\
     \     tfoot {position:-webkit-sticky;position:-moz-sticky;position:sticky;\
                  bottom:0;}\n\
-    \     thead th {background-color: #dde;}
+    \     thead th {background-color:#dde;}
     \     td {text-align: right;}\n\
     \     tr:nth-child(odd) {background-color:#eef;}\n\
-    \     th, td {padding:2ex; border: 1px solid #e0e0e0;}\n\
+    \     th, td {padding:2ex; border:1px solid #e0e0e0;}\n\
+    \     .logs {display:none;}\n\
+    \     .logs:target {display:block;position:fixed;top:10%%;left:10%%;\
+                        width:80%%;height:80%%;border:1px solid black;\
+                        background-color:white;overflow:scroll;z-index:10;}\n\
     \  </style>\n\
      </head>"
     title
@@ -162,14 +210,14 @@ let () =
   let libsz_comparison = lib_sizes sizes_comparison in
   let libsz_flambda = lib_sizes sizes_flambda in
   let m = M.merge (fun _ c f -> Some (c,f)) comparison flambda in
-  Printf.printf "%s\n<body><table class=\"sortable\">\
+  Printf.printf "%s\n<body><div><table class=\"sortable\">\
                  <thead><tr><th>Package</th><th>reference</th><th>flambda</th>\
                  <th>ref time (s)</th><th>flambda time(s)</th><th>ratio</th>\
                  <th>ref lib size (KB)</th><th>flambda lib size (KB)</th>\
                  <th>size ratio</th></tr></thead><tbody>\n"
     (html_head ("FLambda comparison " ^ Filename.basename (Sys.getcwd ())));
   let full_line =
-    Printf.printf "<tr><th>%s.%s</th><td>%s</td><td>%s</td>\
+    Printf.printf "<tr><th>%s</th><td>%s</td><td>%s</td>\
                    <td>%.3f</td><td>%.3f</td><td>%.2fx</td>\
                    <td>%s</td><td>%s</td><td>%s</td></tr>\n"
   in
@@ -178,77 +226,80 @@ let () =
                    <td>%s</td><td>%s</td>\
                    <td></td><td></td><td></td><td></td></tr>\n"
   in
-  let total_c, total_f, time_c, time_f, sz_c, sz_f =
-    M.fold (fun ((pkg,_),a) (c,f) (stc,stf,tc,tf,szc,szf as acc) ->
-        match a, c, f with
-        | Build, Some c, Some f ->
-          if c.status <> Ok && f.status <> Ok then acc
-          else if c.status <> Ok then stc, stf + 1, tc, tf, szc, szf
-          else if f.status <> Ok then stc + 1, stf, tc, tf, szc, szf
-          else
-            let find m = try SM.find pkg m with Not_found -> lib_empty in
-            (stc + 1, stf + 1, tc +. c.duration, tf +. f.duration,
-             ls_map2 (+) szc (find libsz_comparison),
-             ls_map2 (+) szf (find libsz_flambda))
-        | _ -> acc)
-      m (0,0,0.,0.,lib_empty,lib_empty)
-  in
   let print_sz i = Printf.sprintf "%d.%02d" (i/1000) (i mod 1000 / 10) in
   let dft d o f = match o with None -> d | Some x -> f x in
-  M.iter (fun ((name,version),a) (c,f) -> match a with
-      | Install | Remove -> ()
-      | Build ->
-        match c,f with
-        | Some ({status = Ok} as c), Some ({status = Ok} as f) ->
-          let sz_comp =
-            try SM.find name libsz_comparison with Not_found -> lib_empty
-          in
-          let sz_flam =
-            try SM.find name libsz_flambda with Not_found -> lib_empty
-          in
-          full_line name version
-            (string_of_status (c.status)) (string_of_status (f.status))
+  let (total_c, total_f, time_c, time_f, sz_c, sz_f), logs =
+    M.fold (fun ((name,version),a) (c,f) (totals,logs) ->
+        match a with
+        | Install | Remove -> totals,logs
+        | Build ->
+          match c,f with
+          | Some ({status = Ok} as c), Some ({status = Ok} as f) ->
+            let sz_comp =
+              try SM.find name libsz_comparison with Not_found -> lib_empty
+            in
+            let sz_flam =
+              try SM.find name libsz_flambda with Not_found -> lib_empty
+            in
+            full_line (name^"."^version) "OK" "OK"
             (c.duration) (f.duration)
             (f.duration /. c.duration)
             (lib_size_to_string print_sz sz_comp)
             (lib_size_to_string print_sz sz_flam)
             (lib_size_to_string (Printf.sprintf "%.2fx")
                (ls_map2 (fun a b -> float_of_int a /. float_of_int b)
-                  sz_flam sz_comp))
-        | _ ->
-          short_line name version
-            (dft "-" c @@ fun r -> string_of_status (r.status))
-            (dft "-" f @@ fun r -> string_of_status (r.status))
-            (dft "" c @@ fun r ->
-             if r.status = Aborted then "" else
-               Printf.sprintf "%.3f" r.duration)
-            (dft "" f @@ fun r ->
-             if r.status = Aborted then "" else
-               Printf.sprintf "%.3f" r.duration)
-    )
-    m;
+                  sz_flam sz_comp));
+            let stc,stf,tc,tf,szc,szf = totals in
+            let find m = try SM.find name m with Not_found -> lib_empty in
+            (stc + 1, stf + 1, tc +. c.duration, tf +. f.duration,
+             ls_map2 (+) szc (find libsz_comparison),
+             ls_map2 (+) szf (find libsz_flambda)),
+            logs
+          | _ ->
+            let logs, status_c = html_status logs name version "comparison" c in
+            let logs, status_f = html_status logs name version "flambda" f in
+            short_line name version status_c status_f
+              (dft "" c @@ fun r ->
+               if r.status = Aborted then "" else
+                 Printf.sprintf "%.3f" r.duration)
+              (dft "" f @@ fun r ->
+               if r.status = Aborted then "" else
+                 Printf.sprintf "%.3f" r.duration);
+            let stc,stf,tc,tf,szc,szf = totals in
+            let ts = function Some {status = Ok; _} -> 1 | _ -> 0 in
+            (stc + ts c, stf + ts f, tc, tf, szc, szf),
+            logs
+      )
+      m ((0,0,0.,0.,lib_empty,lib_empty),[])
+  in
   Printf.printf "</tbody><tfoot>\n";
-  full_line ".TOTAL" ""
+  full_line "TOTAL"
     (Printf.sprintf "%d Ok" total_c) (Printf.sprintf "%d Ok" total_f)
     time_c time_f (time_f /. time_c)
     (lib_size_to_string print_sz sz_c)
     (lib_size_to_string print_sz sz_f)
     (lib_size_to_string (Printf.sprintf "%.2f")
        (ls_map2 (fun a b -> float_of_int a /. float_of_int b) sz_f sz_c));
-  Printf.printf "</tfoot></table>\n<br/><br/><br/>\n";
-  Printf.printf "<table class=\"sortable\"><thead>\
-                 <tr><th>Binary</th><th>ref size (KB)</th>\
+  Printf.printf "</tfoot></table>\n</div>\n";
+  List.iter print_endline logs;
+  Printf.printf "<div><table class=\"sortable\"><thead>\
+                 <tr><th>Binary</th><th>kind</th><th>ref size (KB)</th>\
                  <th>flambda size (KB)</th><th>ratio</th></tr></thead>\
                  <tbody>\n";
   let tot_c, tot_f =
+    let byte = byte_files "comparison" in
     SM.fold (fun f (szc, szf) (tot_c, tot_f) ->
         if is_prefix "bin/" f then (
+          let isbyte = S.mem f byte in
           Printf.printf
-            "<tr><th>%s</th><td>%s</td><td>%s</td><td>%.2f</td></tr>\n"
+            "<tr><th>%s</th>\
+             <td>%s</td><td>%s</td><td>%s</td><td>%.2f</td></tr>\n"
             (String.sub f 4 (String.length f - 4))
+            (if isbyte then "byte" else "")
             (print_sz szc) (print_sz szf)
             (float_of_int szf /. float_of_int szc);
-          tot_c + szc, tot_f + szf)
+          if isbyte then tot_c, tot_f
+          else tot_c + szc, tot_f + szf)
         else
           tot_c, tot_f
       )
@@ -258,8 +309,8 @@ let () =
         sizes_comparison sizes_flambda)
       (0,0);
   in
-  Printf.printf "</tbody><tfoot><tr><th>TOTAL</th>\
-                 <td>%s</td><td>%s</td><td>%.2f</td></tr>\n\
-                 </tfoot></table>"
+  Printf.printf "</tbody><tfoot><tr><th>TOTAL (native only)</th>\
+                 <td>%s</td><td></td><td>%s</td><td>%.2f</td></tr>\n\
+                 </tfoot></table></div>"
     (print_sz tot_c) (print_sz tot_f) (float_of_int tot_f /. float_of_int tot_c);
   Printf.printf "</body></html>\n"

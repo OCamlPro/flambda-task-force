@@ -82,13 +82,19 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
     opam pin add lwt 2.4.8 --no-action --yes
     # # camlp4 crashes on bin_prot 111
     # opam pin add bin_prot.112
+    # type_conv 112.01.02 (normally available soon on opam-repository official)
+    opam pin add type_conv git://github.com/janestreet/type_conv.git#112.01.02 \
+         --no-action --yes
 done
 
 # Install all depexts
 ###
 
 for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
+    opam pin add depext --dev --yes
     OPAMYES=1 opam depext --no-sources $(opam list -sa)
+    opam remove -a depext --yes
+    opam unpin depext --yes
 done
 # We ignore packages with 'source scripts', it's too unreliable
 
@@ -133,7 +139,11 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
         echo
         opam install --unset-root --yes --json=$LOGDIR/$OPAMSWITCH-$i.json $step
         opam list -s >$LOGDIR/installed-$OPAMSWITCH-$i.log
-        (cd $(opam config var prefix) && tree -sfin --noreport bin && tree -sfin --noreport lib -P '*.cm*|*.so|*.a') >$LOGDIR/files-$OPAMSWITCH-$i.list
+        (cd $(opam config var prefix) && tree -sfin --noreport bin && tree -sfin --noreport lib) \
+            >$LOGDIR/files-$OPAMSWITCH-$i.list
+        (cd $(opam config var prefix) &&
+         for f in bin/*; do read -N 2 X <$f; if [ "$X" = "#\!" ]; then echo $f; fi; done) \
+            >$LOGDIR/byteexec-$OPAMSWITCH-$i.list
         i=$((i+1))
         # Restore backed up switch
         switchdir=$(opam config var prefix)
