@@ -142,7 +142,7 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
         (cd $(opam config var prefix) && tree -sfin --noreport bin && tree -sfin --noreport lib) \
             >$LOGDIR/files-$OPAMSWITCH-$i.list
         (cd $(opam config var prefix) &&
-         for f in bin/*; do read -N 2 X <$f; if [ "$X" = "#\!" ]; then echo $f; fi; done) \
+         for f in bin/*; do read -N 2 X <$f; if [ "$X" = "#!" ]; then echo $f; fi; done) \
             >$LOGDIR/byteexec-$OPAMSWITCH-$i.list
         i=$((i+1))
         # Restore backed up switch
@@ -152,5 +152,6 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
     done
 done
 
-echo "Done. All logs gathered into $LOGDIR. You may cd there and run:"
-echo "    logs2html >index.html"
+(cd $LOGDIR && logs2html >index.html)
+
+ln -sf $LOGDIR latest

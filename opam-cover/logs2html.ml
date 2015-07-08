@@ -14,6 +14,7 @@ type status =
 type result = {
   status: status;
   duration: float;
+  run: string;
 }
 
 let (%) j f = List.assoc f (JU.to_assoc j)
@@ -49,43 +50,18 @@ let parse_status: J.json -> status = function
             List.map JU.to_string (JU.to_list (e%"stdout")),
             List.map JU.to_string (JU.to_list (e%"stderr")))
 
-let parse_result r =
+let parse_result run r =
   parse_action (r%"action"),
   { status = parse_status (r%"result");
-    duration = try JU.to_float (r%"duration") with Not_found -> 0.;
+    run;
+    duration = try JU.to_float (r%"duration") with Not_found -> 0.
   }
 
-let escape s =
-  let s = Re.replace_string (Re.compile (Re.char '&')) ~by:"&amp;" s in
-  let s = Re.replace_string (Re.compile (Re.char '<')) ~by:"&lt;" s in
-  s
-
-let html_status logs name version sw = function
-  | Some {status = Ok; _} -> logs, "OK"
-  | Some {status = Aborted; _} -> logs, "Aborted"
-  | Some {status = Failed (cmd,i,stdout,stderr); _} ->
-    let id = Printf.sprintf "log-%s-%s-%s" sw name version in
-    Printf.sprintf
-      "<div class=\"logs\" id=\"%s\">\n\
-       <a class=\"close\" href=\"#close\">Close</a>\n\
-       <h3>Error on %s.%s (%s)</h3>\n\
-       <p>Command: <pre>%s</pre></p>
-       <h4>Stdout</h4><pre>%s</pre>\n\
-       <h4>Stderr</h4><pre>%s</pre>\n\
-       </div>\n"
-      id name version sw
-      (escape cmd)
-      (escape (String.concat "\n" stdout))
-      (escape (String.concat "\n" stderr))
-    :: logs,
-    Printf.sprintf "<a href=\"#%s\">Failure (%d)</a>" id i
-  | None -> logs, "-"
-
-let results f =
+let results run f =
   let f = JU.to_assoc (J.from_file f) in
   try
     let r = JU.to_list (List.assoc "results" f) in
-    List.map parse_result r
+    List.map (parse_result run) r
   with Not_found -> []
 
 module M = Map.Make(struct
@@ -93,54 +69,43 @@ module M = Map.Make(struct
     let compare = compare
   end)
 
-let all_results pfx =
+let files pfx ext =
   let files = Array.to_list (Sys.readdir Filename.current_dir_name) in
   let files =
-    List.filter (fun f -> is_prefix pfx f && extension f = "json") files
+    List.filter (fun f -> is_prefix pfx f && extension f = ext) files
   in
+  List.sort compare files
+
+let all_results pfx =
   List.fold_left (fun acc f ->
-      let r = results f in
+      let run = Filename.chop_extension f in
+      let r = results run f in
       Printf.eprintf "read %s: %d results\n" f (List.length r);
       List.fold_left (fun acc (a,r) -> M.add a r acc) acc r)
-    M.empty (List.sort compare files)
-
-module SM = Map.Make (String)
-
-let sizes pfx =
-  let files = Array.to_list (Sys.readdir Filename.current_dir_name) in
-  let files =
-    let pfx = "files-"^pfx in
-    List.filter (fun f -> is_prefix pfx f && extension f = "list") files
-  in
-  List.fold_left (fun acc f ->
-      let ic = open_in f in
-      let rec scan acc =
-        match input_line ic with
-        | exception End_of_file -> close_in ic; acc
-        | s ->
-          scan @@
-          try Scanf.sscanf s "[ %d] %s" (fun sz f -> SM.add f sz acc)
-          with Scanf.Scan_failure _ -> acc
-      in
-      scan acc)
-    SM.empty (List.sort compare files)
+    M.empty (files pfx "json")
 
 module S = Set.Make(String)
+module SM = Map.Make (String)
+
+let fold_lines f acc file =
+  let ic = open_in file in
+  let rec scan acc =
+    match input_line ic with
+    | exception End_of_file -> close_in ic; acc
+    | s -> scan (f acc s)
+  in
+  scan acc
+
+let sizes pfx =
+  List.fold_left
+    (fold_lines (fun acc s ->
+         try Scanf.sscanf s "[ %d] %s" (fun sz f -> SM.add f sz acc)
+         with Scanf.Scan_failure _ -> acc))
+    SM.empty (files ("files-"^pfx) "list")
 
 let byte_files pfx =
-  let files = Array.to_list (Sys.readdir Filename.current_dir_name) in
-  let files =
-    let pfx = "byteexec-" in
-    List.filter (fun f -> is_prefix pfx f && extension f = "list") files
-  in
-  List.fold_left (fun acc f ->
-      let ic = open_in f in
-      let rec scan acc = match input_line ic with
-        | exception End_of_file -> close_in ic; acc
-        | s -> scan (S.add s acc)
-      in
-      scan acc)
-    S.empty (List.sort compare files)
+  List.fold_left (fold_lines (fun acc s -> S.add s acc))
+    S.empty (files ("byteexec-"^pfx) "list")
 
 type 'a lib_size = { total: 'a; cmxs: 'a; cmx: 'a; cmxa: 'a; a: 'a; }
 
@@ -195,20 +160,55 @@ let html_head title =
     \     tr:nth-child(odd) {background-color:#eef;}\n\
     \     th, td {padding:2ex; border:1px solid #e0e0e0;}\n\
     \     .logs {display:none;}\n\
-    \     .logs:target {display:block;position:fixed;top:10%%;left:10%%;\
-                        width:80%%;height:80%%;border:1px solid black;\
+    \     .logs:target {display:block;position:fixed;top:5%%;left:5%%;\
+                        right:5%%;bottom:5%%;border:1px solid black;\
                         background-color:white;overflow:scroll;z-index:10;}\n\
+    \     .close {display:block;position:fixed;top:7%%;right:7%%;}\n\
     \  </style>\n\
      </head>"
     title
 
+let escape s =
+  let s = Re.replace_string (Re.compile (Re.char '&')) ~by:"&amp;" s in
+  let s = Re.replace_string (Re.compile (Re.char '<')) ~by:"&lt;" s in
+  s
+
+let html_status logs name version sw = function
+  | Some {status = Ok; _} -> logs, "OK"
+  | Some {status = Aborted; _} -> logs, "Aborted"
+  | Some {status = Failed (cmd,i,stdout,stderr); _} ->
+    let id = Printf.sprintf "log-%s-%s-%s" sw name version in
+    Printf.sprintf
+      "<div class=\"logs\" id=\"%s\">\n\
+       <a class=\"close\" href=\"#close\">Close</a>\n\
+       <h3>Error on %s.%s (%s)</h3>\n\
+       <p>Command: <pre>%s</pre></p>
+       <h4>Stdout</h4><pre>%s</pre>\n\
+       <h4>Stderr</h4><pre>%s</pre>\n\
+       </div>\n"
+      id name version sw
+      (escape cmd)
+      (escape (String.concat "\n" stdout))
+      (escape (String.concat "\n" stderr))
+    :: logs,
+    Printf.sprintf "<a href=\"#%s\">Failure (%d)</a>" id i
+  | None -> logs, "-"
+
 let () =
   let comparison = all_results "comparison" in
   let flambda = all_results "flambda" in
-  let sizes_comparison = sizes "comparison" in
-  let sizes_flambda = sizes "flambda" in
-  let libsz_comparison = lib_sizes sizes_comparison in
-  let libsz_flambda = lib_sizes sizes_flambda in
+  let lib_sizes_comparison =
+    List.fold_left (fun acc file ->
+        let run = Filename.chop_extension file in
+        SM.add run (lib_sizes (sizes run)) acc
+      ) SM.empty (files "comparison" "json")
+  in
+  let lib_sizes_flambda =
+    List.fold_left (fun acc file ->
+        let run = Filename.chop_extension file in
+        SM.add run (lib_sizes (sizes run)) acc
+      ) SM.empty (files "flambda" "json")
+  in
   let m = M.merge (fun _ c f -> Some (c,f)) comparison flambda in
   Printf.printf "%s\n<body><div><table class=\"sortable\">\
                  <thead><tr><th>Package</th><th>reference</th><th>flambda</th>\
@@ -236,24 +236,25 @@ let () =
           match c,f with
           | Some ({status = Ok} as c), Some ({status = Ok} as f) ->
             let sz_comp =
-              try SM.find name libsz_comparison with Not_found -> lib_empty
+              try SM.find name (SM.find c.run lib_sizes_comparison)
+              with Not_found -> lib_empty
             in
             let sz_flam =
-              try SM.find name libsz_flambda with Not_found -> lib_empty
+              try SM.find name (SM.find f.run lib_sizes_flambda)
+              with Not_found -> lib_empty
             in
             full_line (name^"."^version) "OK" "OK"
             (c.duration) (f.duration)
             (f.duration /. c.duration)
             (lib_size_to_string print_sz sz_comp)
             (lib_size_to_string print_sz sz_flam)
-            (lib_size_to_string (Printf.sprintf "%.2fx")
+            (lib_size_to_string (Printf.sprintf "%.2f")
                (ls_map2 (fun a b -> float_of_int a /. float_of_int b)
                   sz_flam sz_comp));
             let stc,stf,tc,tf,szc,szf = totals in
-            let find m = try SM.find name m with Not_found -> lib_empty in
             (stc + 1, stf + 1, tc +. c.duration, tf +. f.duration,
-             ls_map2 (+) szc (find libsz_comparison),
-             ls_map2 (+) szf (find libsz_flambda)),
+             ls_map2 (+) szc sz_comp,
+             ls_map2 (+) szf sz_flam),
             logs
           | _ ->
             let logs, status_c = html_status logs name version "comparison" c in
@@ -304,9 +305,9 @@ let () =
           tot_c, tot_f
       )
       (SM.merge (fun _ a b -> match a,b with
-         | Some a, Some b -> Some (a,b)
-         | _ -> None)
-        sizes_comparison sizes_flambda)
+           | Some a, Some b -> Some (a,b)
+           | _ -> None)
+          (sizes "comparison") (sizes "flambda"))
       (0,0);
   in
   Printf.printf "</tbody><tfoot><tr><th>TOTAL (native only)</th>\
