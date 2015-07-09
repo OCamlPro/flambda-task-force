@@ -154,4 +154,5 @@ done
 
 (cd $LOGDIR && logs2html >index.html)
 
-ln -sf $LOGDIR latest
+rm -rf latest
+echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=/'"$LOGDIR"'/" /></head></html>' >latest/index.html

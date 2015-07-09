@@ -130,7 +130,7 @@ let add_to_lib_size sz f size =
 let lib_size_to_string f sz =
   let f () = f in
   Printf.sprintf
-    "<a title=\"cmx: %a, cmxa: %a, cmxs: %a, a: %a)\">%a</a>"
+    "<a title=\"cmx: %a, cmxa: %a, cmxs: %a, a: %a\">%a</a>"
     f sz.cmx f sz.cmxa f sz.cmxs f sz.a f sz.total
 
 let lib_sizes s =
@@ -164,7 +164,7 @@ let html_head title =
                         right:5%%;bottom:5%%;border:1px solid black;\
                         background-color:white;overflow:scroll;z-index:10;}\n\
     \     .close {display:block;position:fixed;top:7%%;right:7%%;}\n\
-    \  </style>\n\
+    \  --></style>\n\
      </head>"
     title
 
@@ -222,7 +222,7 @@ let () =
                    <td>%s</td><td>%s</td><td>%s</td></tr>\n"
   in
   let short_line =
-    Printf.printf "<tr><th>%s.%s</td><td>%s</td><td>%s</td>\
+    Printf.printf "<tr><th>%s.%s</th><td>%s</td><td>%s</td>\
                    <td>%s</td><td>%s</td>\
                    <td></td><td></td><td></td><td></td></tr>\n"
   in
