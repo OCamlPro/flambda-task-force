@@ -9,7 +9,7 @@ type status =
   | Ok
   | Failed of string * int * string list * string list
   (* cmd, code, stdout, stderr *)
-  | Aborted
+  | Aborted of (pkg * action) list
 
 type result = {
   status: status;
@@ -40,7 +40,8 @@ let parse_action: J.json -> pkg * action = function
 
 let parse_status: J.json -> status = function
   | `String "OK" -> Ok
-  | `String "aborted" -> Aborted
+  | `Assoc ["aborted", `List a] ->
+    Aborted (List.map parse_action a)
   | `Assoc ["process-error", e] ->
     Failed (JU.to_string (e%"info"%"command"),
             (match e%"code" with
@@ -175,7 +176,11 @@ let escape s =
 
 let html_status logs name version sw = function
   | Some {status = Ok; _} -> logs, "OK"
-  | Some {status = Aborted; _} -> logs, "Aborted"
+  | Some {status = Aborted deps; _} ->
+    let causes = List.map (fun ((n,v),_) -> Printf.sprintf "%s.%s" n v) deps in
+    logs,
+    Printf.sprintf "<a title=\"Failed dependencies: %s\">Aborted</a>"
+      (String.concat ", " causes)
   | Some {status = Failed (cmd,i,stdout,stderr); _} ->
     let id = Printf.sprintf "log-%s-%s-%s" sw name version in
     Printf.sprintf
@@ -261,10 +266,10 @@ let () =
             let logs, status_f = html_status logs name version "flambda" f in
             short_line name version status_c status_f
               (dft "" c @@ fun r ->
-               if r.status = Aborted then "" else
+               match r.status with Aborted _ -> "" | _ ->
                  Printf.sprintf "%.3f" r.duration)
               (dft "" f @@ fun r ->
-               if r.status = Aborted then "" else
+               match r.status with Aborted _ -> "" | _ ->
                  Printf.sprintf "%.3f" r.duration);
             let stc,stf,tc,tf,szc,szf = totals in
             let ts = function Some {status = Ok; _} -> 1 | _ -> 0 in
