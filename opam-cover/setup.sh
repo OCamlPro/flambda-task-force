@@ -1,4 +1,4 @@
-#!/bin/bash -ue
+#!/bin/bash
 
 ## NOTE: this is more for documentation than to be run as a script. You're
 ## advised to run the steps one by one.
@@ -97,62 +97,3 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
     opam unpin depext --yes
 done
 # We ignore packages with 'source scripts', it's too unreliable
-
-
-#################
-# RUN
-#################
-
-# Make sure we have the latest flambda compiler
-###
-
-opam upgrade --switch flambda ocaml --yes
-
-# Backup clean switches
-###
-
-rm -rf switch-backups
-mkdir -p switch-backups
-for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
-    cp -a $(opam config var prefix) switch-backups
-done
-
-# Run the install tests
-###
-
-LOGDIR=$(date +%Y-%m-%d-%H%M)-$(opam show ocaml --switch flambda --field pinned | sed 's/.*(\(.*\))/\1/')
-mkdir $LOGDIR
-
-# Compute coverage
-for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
-    couverture >$LOGDIR/couv-$OPAMSWITCH
-done
-
-
-for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
-    readarray COUV <$LOGDIR/couv-$OPAMSWITCH
-    i=1
-    for step in "${COUV[@]}"; do
-        echo
-        echo
-        echo "[41;30m======================= STEP $i on $OPAMSWITCH ===================[m"
-        echo
-        opam install --unset-root --yes --json=$LOGDIR/$OPAMSWITCH-$i.json $step
-        opam list -s >$LOGDIR/installed-$OPAMSWITCH-$i.log
-        (cd $(opam config var prefix) && tree -sfin --noreport bin && tree -sfin --noreport lib) \
-            >$LOGDIR/files-$OPAMSWITCH-$i.list
-        (cd $(opam config var prefix) &&
-         for f in bin/*; do read -N 2 X <$f; if [ "$X" = "#!" ]; then echo $f; fi; done) \
-            >$LOGDIR/byteexec-$OPAMSWITCH-$i.list
-        i=$((i+1))
-        # Restore backed up switch
-        switchdir=$(opam config var prefix)
-        rm -rf $switchdir
-        cp -a switch-backups/$OPAMSWITCH $switchdir
-    done
-done
-
-(cd $LOGDIR && logs2html >index.html)
-
-rm -rf latest
-echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=/'"$LOGDIR"'/" /></head></html>' >latest/index.html
