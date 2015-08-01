@@ -44,4 +44,6 @@ The results on trunk are in the files named "4.03.0+comparison+gen_*software*_.r
 
 The version on which the test where run is given by the `commit_number` file
 
-Summary table : http://ns3000900.ip-37-59-47.eu/configuration-summary/table.html
+Summary packet table : http://ns3000900.ip-37-59-47.eu/configuration-summary/table.html
+
+Summary benchs table : http://ns3000900.ip-37-59-47.eu/configuration-summary/bench.html

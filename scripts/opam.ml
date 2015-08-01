@@ -80,13 +80,14 @@ let create_comp_with_config comp_name comp_url comp_descr comp_version root_dir 
   let comp_dir = create_compiler_dir comp_name comp_version root_dir in
   create_compiler_files_with_config comp_dir comp_name comp_url comp_descr comp_version config
 
-let opam_add_repo_args prog root_dir name repo =
-  [| prog; "repository"; "add"; name; repo; "--root"; root_dir |]
+let opam_add_repo_args prog root_dir name repo priority=
+  let priority = string_of_int priority in
+  [| prog; "repository"; "add"; "--priority"; priority; name; repo; "--root"; root_dir |]
 
-let opam_add_repo root_dir name repo =
+let opam_add_repo root_dir name repo priority =
   Printf.printf "Adding %s repo...\n%!" name;
   let prog = "opam" in
-  ignore (Command.run_command prog (opam_add_repo_args prog root_dir name repo))
+  ignore (Command.run_command prog (opam_add_repo_args prog root_dir name repo priority))
 
 let opam_init_args dir prog repo =
   let opam_init_root = Printf.sprintf "--root=%s" dir in
@@ -95,7 +96,7 @@ let opam_init_args dir prog repo =
 let opam_initialization dir repo =
   Printf.printf "Initializing opam...\n%!";
   let prog = "opam" in
-  ignore (Command.run_command prog (opam_init_args dir prog repo))
+  ignore (Command.run_command prog (opam_init_args dir prog repo))        
 
 let opam_switch_args comp_name prog =
   [| prog; "switch"; comp_name; "-v" |]
@@ -119,12 +120,25 @@ let opam_time_install packet =
   let args = opam_time_install_args packet prog in
   Command.run_command ~parse_stdout:true prog args
 
-let opam_remove_args packets prog =
-  Array.append [| prog; "remove"; "-y" |] (Array.of_list packets)
-
-let opam_remove_packets packets =
+let opam_pin_add packet url =
   let prog = "opam" in
-  ignore (Command.run_command prog (opam_remove_args packets prog)) 
+  ignore (Command.run_command prog [| prog; "pin"; "add"; packet; url; "--no-action"; "-y" |])
+
+let opam_remove_args packet prog =
+  [| prog; "remove"; "-y"; packet |]
+
+let opam_remove_packet packet =
+  let prog = "opam" in
+  ignore (Command.run_command prog (opam_remove_args packet prog))
+
+let opam_remove_deps b =
+  let prog = "opam" in
+  let intern = "--use-internal-solver" in
+  if b 
+  then 
+    ignore (Command.run_command prog [| prog; "remove"; "-y"; "-a"; intern |])  
+  else ignore (Command.run_command prog [| prog; "remove"; "-y"; "-a" |])    
+
 
 let opam_remove_comp_args compiler_name prog =
   [| prog; "switch"; "remove"; compiler_name; "-y" |]
@@ -134,16 +148,8 @@ let opam_remove_compiler compiler_name comparison =
   let prog = "opam" in
   ignore (Command.run_command prog (opam_remove_comp_args compiler_name prog))
 
-let opam_install_depext () =
-  let prog = "opam" in
-  Command.run_command prog [| prog; "install"; "depext" ; "-y" |]
-
-let opam_depext_arg packets prog =
-  Array.append [| prog; "depext"; "-l" |] (Array.of_list packets)
-
-let opam_depext packets =
-  let prog = "opam" in
-  Command.run_command prog (opam_depext_arg packets prog)
+let opam_update () =
+  ignore (Command.run_command "opam" [| "opam"; "update"; "--use-internal-solver" |])
   
 let create_configuration root_dir compiler_name config =
   let compiler_path = Filename.concat root_dir compiler_name in
@@ -162,18 +168,36 @@ let create_empty_configuration_file root_dir compiler_name =
   Printf.fprintf oc "*: timings=1";
   close_out oc
 
-let timed_install root_dir res_dir compiler_name packet config_str =
-  opam_remove_packets [packet];
+let timed_install root_dir res_dir compiler_name with_dep packet config_str  =
+  opam_remove_packet packet;
+  if not with_dep then opam_remove_deps false;
   let success, output = opam_time_install packet in
   if success 
   then Measurements.get_time_informations
          root_dir res_dir compiler_name packet config_str output
   else Measurements.dump_error res_dir compiler_name packet config_str output
 
-let timed_install_comparison root_dir res_dir compiler_name packet =
+let timed_install_bench root_dir res_dir compiler_name with_dep bench config_str =
+  opam_remove_packet bench;
+  if not with_dep then opam_remove_deps (bench = "alt-ergo-bench");
+  let success, output = opam_time_install bench in
+  if success 
+  then Measurements.get_time_informations_bench
+         root_dir res_dir compiler_name bench config_str output
+  else Measurements.dump_error res_dir compiler_name bench config_str output
+
+let timed_install_no_config root_dir res_dir compiler_name with_dep packet =
   create_empty_configuration_file root_dir compiler_name;
-  timed_install root_dir res_dir compiler_name packet ""
-    
-let timed_install_config root_dir res_dir compiler_name packet config =
+  timed_install root_dir res_dir compiler_name with_dep packet ""
+
+let timed_install_bench_no_config root_dir res_dir compiler_name with_dep bench =
+  create_empty_configuration_file root_dir compiler_name;
+  timed_install_bench root_dir res_dir compiler_name with_dep bench ""
+
+let timed_install_bench_config root_dir res_dir compiler_name with_dep packet config =
   let config_str = Configuration.conf_descr config in
-  timed_install root_dir res_dir compiler_name packet config_str
+  timed_install_bench root_dir res_dir compiler_name with_dep packet config_str
+    
+let timed_install_config root_dir res_dir compiler_name with_dep packet config =
+  let config_str = Configuration.conf_descr config in
+  timed_install root_dir res_dir compiler_name with_dep packet config_str

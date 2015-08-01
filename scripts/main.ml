@@ -8,15 +8,31 @@ let no_config_flag = ref false
 
 let with_dep_flag = ref false
 
+let benchs_run_flag = ref false
+
 let root_dir = ref ""
 
 let usage = 
-  Printf.sprintf "Usage: %s root_dir [--no-install] [--no-comparison] [--no-config]\n%!" Sys.executable_name
+  Printf.sprintf 
+    "Usage: %s root_dir [--no-install] [--no-comparison] [--no-config] [--with-dep-flag] [--benchs-run]\n%!"
+    Sys.executable_name
 
 let arglist = [("--no-install", Arg.Set no_install_flag, "no opam init and compilers creation");
                ("--no-comparison", Arg.Set no_comparison_flag, "don't bother with comparison switch");
                ("--no-config", Arg.Set no_config_flag, "only use -dtimings for flambda");
-               ("--with-dep", Arg.Set with_dep_flag, "run opam install \"packet\" once before mesuring")]
+               ("--with-dep", Arg.Set with_dep_flag, "run opam install \"packet\" once before mesuring");
+               ("--benchs-run", Arg.Set benchs_run_flag, "run benchmarks test")]
+
+let benchs = 
+  [ (* "almabench-bench"; *) (* "alt-ergo-bench"; *) (* "async-echo-bench"; *)
+    (* "async-rpc-bench"; *) (* "async-smtp-bench"; *) "bdd-bench";
+    (* "chameneos-bench"; "cohttp-bench"; "coq-bench"; "core-micro-bench"; *)
+    (* "core-sequence-bench"; *) (* "core-tests-bench";  "frama-c-bench";*)
+    (* "js_of_ocaml-bench"; *) (* "jsonm-bench"; *) "kb-bench";
+    "lexifi-g2pp-bench"; (* "nbcodec-bench"; *) (* "patdiff-bench"; *)
+    "sauvola-bench"; (* "sequence-bench"; *) (* "thread-bench"; "valet-bench"; *)
+    (* "yojson-bench" *) ]
+
 
 let create_compiler_in_repo repo name descr archive =
   Printf.printf "Creating %s compiler in repo...\n%!" name;
@@ -56,13 +72,8 @@ let get_commit_number () =
     else (Printf.eprintf "failed to retrieve commit_number\n%!"; assert false)
   | _ -> (Printf.eprintf "failed to retrieve commit_number\n%!"; assert false)
 
-let time_str () =
-  let tm = Unix.localtime (Unix.time ()) in
-  Printf.sprintf "%i-%i-%i_%i-%i" 
-    (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1) tm.Unix.tm_mday tm.Unix.tm_hour tm.Unix.tm_min
-
-let mk_results_dir packet time_str commit_number =
-  let results_dir = "results" in
+let mk_results_dir packet time_str commit_number prefix =
+  let results_dir = prefix in
   let packet_dir = Filename.concat results_dir packet in
   let time_dir = Filename.concat packet_dir time_str in
   Printf.printf "Creating %s...\n%!" time_dir;
@@ -92,7 +103,7 @@ let run_packet_test root_dir packet res_dir =
   then
     (Opam.opam_switch_comp Command.comparison_name;
      if !with_dep_flag then Opam.opam_install_packets [packet];
-     Opam.timed_install_comparison !root_dir res_dir comparison_name packet);
+     Opam.timed_install_no_config root_dir res_dir comparison_name !with_dep_flag packet);
   if !no_config_flag
   then
     (Opam.opam_switch_comp flambda_name;
@@ -102,33 +113,63 @@ let run_packet_test root_dir packet res_dir =
     Printf.printf "Configuration number %i/%i\n%!" (i + 1) configuration_nbr;
     Printf.printf "\n==== config =====\n\n%s\n\n%!" (Configuration.to_string config);
     if not !no_config_flag then
-      (let flambda = create_flambda_in_root !root_dir config in
+      (let flambda = create_flambda_in_root root_dir config in
        Opam.opam_switch_comp flambda;
        if !with_dep_flag then Opam.opam_install_packets [packet];
-       Opam.timed_install_config !root_dir res_dir flambda packet config;
+       Opam.timed_install_config root_dir res_dir flambda !with_dep_flag packet config;
        Opam.opam_remove_compiler flambda comparison_name)
     else
-     Opam.create_configuration !root_dir flambda_name config;
-     Opam.timed_install_config !root_dir res_dir flambda_name packet config
+     Opam.create_configuration root_dir flambda_name config;
+     Opam.timed_install_config root_dir res_dir flambda_name !with_dep_flag packet config
+  ) Configuration.configurations
+
+let run_benchs_test root_dir time_str commit_number benchs =
+  Opam.opam_switch_comp Command.comparison_name;
+  List.iter (fun bench ->
+    let res_dir = mk_results_dir bench time_str commit_number "benchs" in
+    Opam.timed_install_bench_no_config 
+      root_dir res_dir comparison_name !with_dep_flag bench;
+  ) benchs;
+  Measurements.get_run_time_bench root_dir comparison_name time_str "" benchs;
+  Opam.opam_switch_comp Command.flambda_name;
+  let configuration_nbr = List.length Configuration.configurations in
+  List.iteri (fun i config ->
+    Printf.printf "Configuration number %i/%i\n%!" (i + 1) configuration_nbr;
+    Printf.printf "\n==== config =====\n\n%s\n\n%!" (Configuration.to_string config);
+    List.iter (fun bench ->
+      let res_dir = mk_results_dir bench time_str commit_number "benchs" in
+      Opam.create_configuration root_dir flambda_name config;
+      Opam.timed_install_bench_config 
+        root_dir res_dir flambda_name !with_dep_flag bench config
+    ) benchs;
+    let config_str = Configuration.conf_descr config in
+    Measurements.get_run_time_bench 
+      root_dir flambda_name time_str config_str benchs
   ) Configuration.configurations
 
 let () =
   Arg.parse
     arglist (fun s -> root_dir := s) usage;
   if !root_dir = "" then Printf.printf "%s\n" usage
-  else
-    let packets = [ (* "coq.8.4.6~camlp4"; "alt-ergo"; "js_of_ocaml";*) "menhir" ] in
-    let time_str = time_str () in
+  else 
+    let packets = [ "yojson"; "menhir"; "alt-ergo"; 
+                    "js_of_ocaml"; "menhir"; (* "coq.8.4.6~camlp4" *)  ] in
+    let time_str = Command.time_str () in
     let commit_number = get_commit_number () in
     if not !no_install_flag then
       (let repo = create_repo () in
        Command.mk_dir !root_dir;
        Opam.opam_initialization !root_dir repo;
-       Opam.opam_add_repo !root_dir "base" base_repo_url;
-       Opam.opam_add_repo !root_dir "overlay" overlay_repo_url);
+       Opam.opam_add_repo !root_dir "benches" benchs_repo_url 10;
+       Opam.opam_add_repo !root_dir "base" base_repo_url 20;
+       Opam.opam_add_repo !root_dir "overlay" overlay_repo_url 30);
     Unix.putenv "OPAMROOT" !root_dir;
     Unix.putenv "OPAMJOBS" "8";
-    List.iter (fun packet ->
-      let res_dir = mk_results_dir packet time_str commit_number in
-      run_packet_test root_dir packet res_dir
-    ) packets
+    Opam.opam_pin_add "type_conv" "git://github.com/janestreet/type_conv.git#112.01.02";
+    if !benchs_run_flag
+    then run_benchs_test !root_dir time_str commit_number benchs
+    else
+      List.iter (fun packet ->
+        let res_dir = mk_results_dir packet time_str commit_number "results" in
+        run_packet_test !root_dir packet res_dir
+      ) packets

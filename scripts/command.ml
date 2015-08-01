@@ -13,7 +13,14 @@ let flambda_name = "4.03.0+flambda+gen"
 let flambda_descr = "The main flambda developpement branch"
 
 let base_repo_url = "https://flambda.ocamlpro.com/opam-flambda-repository/"
-let overlay_repo_url = "git://github.com/OCamlPro/opam-flambda-repository-overlay"
+(* let overlay_repo_url = "git://github.com/OCamlPro/opam-flambda-repository-overlay" *)
+let overlay_repo_url = "opam-flambda-repository-overlay"
+let benchs_repo_url = "git://github.com/OCamlPro/opam-bench-repo"
+
+let time_str () =
+  let tm = Unix.localtime (Unix.time ()) in
+  Printf.sprintf "%i-%i-%i_%i-%i" 
+    (tm.Unix.tm_year + 1900) (tm.Unix.tm_mon + 1) tm.Unix.tm_mday tm.Unix.tm_hour tm.Unix.tm_min
 
 let rec remove file =
   if Sys.file_exists file
@@ -67,9 +74,32 @@ let input_all_file name =
   let s = input_all ic in
   close_in ic;
   s
-  
-let make_tmp_file suffix =
-  let name = Filename.temp_file "" suffix in
+
+let copy_file =
+  let buffer_size = 8192 in
+  let buffer = Bytes.create buffer_size in
+
+  fun input_name output_name ->
+    let fd_in = Unix.openfile input_name [Unix.O_RDONLY] 0 in
+    let fd_out = Unix.openfile output_name [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC] 0o644 in
+    let rec loop () =
+      let read = Unix.read fd_in buffer 0 buffer_size in
+      if read <> 0
+      then
+        let _w : int = Unix.write fd_out buffer 0 read in
+        loop ()
+    in
+    let close () =
+      Unix.close fd_in;
+      Unix.close fd_out
+    in
+    (try loop ()
+     with e -> close (); raise e);
+    close ()
+
+
+let make_tmp_file prefix suffix =
+  let name = Filename.temp_file prefix suffix in
   name, Unix.openfile name [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_APPEND] 0o644
 
 let command_to_string args =
@@ -78,7 +108,7 @@ let command_to_string args =
 let run_command ?parse_stdout:(flag=false) prog args =
   let cmd_str = command_to_string args in
   Printf.printf "Running%s...\n\n%!" cmd_str;
-  let stdout_name, fd_stdout = make_tmp_file ".out" in
+  let stdout_name, fd_stdout = make_tmp_file "" ".out" in
   let out = if flag then fd_stdout else Unix.stdout in 
   let pid = Unix.create_process prog args Unix.stdin out Unix.stderr in
   Unix.close fd_stdout;
@@ -107,7 +137,7 @@ let run_command ?parse_stdout:(flag=false) prog args =
 let run_stderr_command ?parse_stdout:(flag=false) prog args =
   let cmd_str = command_to_string args in
   Printf.printf "Running%s...\n\n%!" cmd_str;
-  let stderr_name, fd_stderr = make_tmp_file ".err" in
+  let stderr_name, fd_stderr = make_tmp_file "" ".err" in
   let err = if flag then fd_stderr else Unix.stderr in
   let pid = Unix.create_process prog args Unix.stdin Unix.stdout err in
   Unix.close fd_stderr;
