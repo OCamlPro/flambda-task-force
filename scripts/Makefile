@@ -11,3 +11,7 @@ table:
 
 clean:
 	ocamlbuild -clean
+	rm bench2html bench2html.cm* becn2html.o
+
+bench2html: bench2html.ml
+	ocamlfind ocamlopt -package cow,cow.syntax,operf-macro -linkpkg -syntax camlp4o $^ -o $@
