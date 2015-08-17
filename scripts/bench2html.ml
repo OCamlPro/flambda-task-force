@@ -4,6 +4,11 @@ open Macroperf
 let comparison_switch = "comparison+bench"
 let result_switch = "flambda+bench"
 
+let score ~result ~comparison =
+  let r, c = Summary.Aggr.(result.mean, comparison.mean) in
+  if r < c then 1. -. c /. r
+  else r /. c -. 1.
+
 let scorebar ~result ~comparison =
   let r, c = Summary.Aggr.(result.mean, comparison.mean) in
   let score = if r < c then r /. c -. 1. else 1. -. c /. r in
@@ -40,7 +45,7 @@ let collect () =
               try
                 let comparison = SMap.find comparison_switch m in
                 let result = SMap.find result_switch m in
-                let score = Summary.Aggr.(result.mean /. comparison.mean) in
+                let score = score ~result ~comparison in
                 if classify_float score <> FP_normal then acc, html else
                 let td r =
                   let open Summary.Aggr in
@@ -54,7 +59,7 @@ let collect () =
                          <tr>
                             <td>$str:bench$</td>
                             <td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
-                              $str:Printf.sprintf "%+0.02f%%" ((score -. 1.) *. 100.)$
+                              $str:Printf.sprintf "%+0.2f" score$
                             </td>
                             $td result$
                             $td comparison$
@@ -67,7 +72,7 @@ let collect () =
         <:html<$html$
                <tr style="background: #cce;">
                  <th style="text-align:left;">$str:Topic.to_string topic$</th>
-                 <td style="text-align:right;">$str:Printf.sprintf "%+0.02f%%" ((avgscore -. 1.) *. 100.)$</td>
+                 <td style="text-align:right;">$str:Printf.sprintf "%+0.2f" avgscore$</td>
                  <td></td>
                  <td></td>
                </tr>
