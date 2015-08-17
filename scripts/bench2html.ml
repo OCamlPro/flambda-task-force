@@ -5,9 +5,10 @@ let comparison_switch = "comparison+bench"
 let result_switch = "flambda+bench"
 
 let scorebar ~result ~comparison =
-  let score = Summary.Aggr.(result.mean /. comparison.mean) in
-  let leftpercent = 50. *. (if score < 1. then score else 1.) in
-  let rightpercent = 50. *. (if score > 1. then score else 1.) in
+  let r, c = Summary.Aggr.(result.mean, comparison.mean) in
+  let score = if r < c then r /. c -. 1. else 1. -. c /. r in
+  let leftpercent = 50. +. 50. *. (min 0. score) in
+  let rightpercent = 50. +. 50. *. (max 0. score) in
   let gradient = [
     "#ffffff", 0.;
     "#ffffff", leftpercent;
@@ -41,18 +42,22 @@ let collect () =
                 let result = SMap.find result_switch m in
                 let score = Summary.Aggr.(result.mean /. comparison.mean) in
                 if classify_float score <> FP_normal then acc, html else
-                  let pr r = Summary.Aggr.(
-                      Printf.sprintf "%.4g ±%.4g (%dx)" r.mean r.stddev r.runs
-                    ) in
-                  score::acc,
-                  <:html<$html$
+                let td r =
+                  let open Summary.Aggr in
+                  let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
+                  <:html< <td style="text-align:right;" title="$str:tooltip$">
+                            $str:Printf.sprintf "%.0f" r.mean$
+                          </td>&>>
+                in
+                score::acc,
+                <:html<$html$
                          <tr>
                             <td>$str:bench$</td>
                             <td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
                               $str:Printf.sprintf "%+0.02f%%" ((score -. 1.) *. 100.)$
                             </td>
-                            <td style="text-align:right;">$str:pr result$</td>
-                            <td style="text-align:right;">$str:pr comparison$</td>
+                            $td result$
+                            $td comparison$
                          </tr>&>>
               with Not_found -> acc, html)
             m ([],<:html<&>>)
