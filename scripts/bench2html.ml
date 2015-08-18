@@ -46,7 +46,7 @@ let collect () =
                 let comparison = SMap.find comparison_switch m in
                 let result = SMap.find result_switch m in
                 let score = score ~result ~comparison in
-                if classify_float score <> FP_normal then acc, html else
+                let score = if classify_float score = FP_nan then 0. else score in
                 let td r =
                   let open Summary.Aggr in
                   let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
@@ -54,12 +54,12 @@ let collect () =
                             $str:Printf.sprintf "%.0f" r.mean$
                           </td>&>>
                 in
-                score::acc,
+                (if classify_float score = FP_infinite then acc else score::acc),
                 <:html<$html$
                          <tr>
                             <td>$str:bench$</td>
                             <td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
-                              $str:Printf.sprintf "%+0.2f" score$
+                              $str:Printf.sprintf "%+0.3f" score$
                             </td>
                             $td result$
                             $td comparison$
@@ -72,7 +72,7 @@ let collect () =
         <:html<$html$
                <tr style="background: #cce;">
                  <th style="text-align:left;">$str:Topic.to_string topic$</th>
-                 <td style="text-align:right;">$str:Printf.sprintf "%+0.2f" avgscore$</td>
+                 <td style="text-align:right;">$str:Printf.sprintf "%+0.3f" avgscore$</td>
                  <td></td>
                  <td></td>
                </tr>
