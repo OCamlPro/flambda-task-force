@@ -4,6 +4,13 @@ open Macroperf
 let comparison_switch = "comparison+bench"
 let result_switch = "flambda+bench"
 
+let ignored_topics = [
+  "heap_words"; "heap_chunks";
+  "live_words"; "live_blocks";
+  "free_words"; "free_blocks";
+  "largest_free"; "fragments";
+]
+
 let score ~result ~comparison =
   let r, c = Summary.Aggr.(result.mean, comparison.mean) in
   if r < c then 1. -. c /. r
@@ -29,7 +36,8 @@ let scorebar ~result ~comparison =
 
 let collect () =
   let bench_dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true macro_dir)) in
-  (* SSet.iter Summary.summarize_dir selectors; *)
+  (* Refresh summary files, which may be needed sometimes *)
+  SSet.iter Summary.summarize_dir (SSet.of_list bench_dirs);
   let data1 =
     List.fold_left (fun acc dir -> DB.of_dir ~acc dir) DB.empty bench_dirs
   in
@@ -40,6 +48,7 @@ let collect () =
   in
   let table_contents =
     TMap.fold (fun topic m html ->
+        if List.mem (Topic.to_string topic) ignored_topics then html else
         let bench_all, bench_html =
           SMap.fold (fun bench m (acc,html) ->
               try
