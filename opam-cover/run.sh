@@ -13,6 +13,14 @@ export OPAMBUILDTEST=0
 
 cd ~/logs
 
+switch-hash () {
+  opam show ocaml --switch flambda --field pinned | sed 's/.*(\(.*\))/\1/'
+}
+
+DATE=$(date +%Y-%m-%d-%H%M)
+LOGDIR_TMP=$DATE.tmp
+LOGDIR=$LOGDIR_TMP
+mkdir $LOGDIR
 
 # Init
 ###
@@ -20,12 +28,25 @@ cd ~/logs
 export OPAMSWITCH
 STARTTIME=$(date +%s)
 
+exec >$LOGDIR/log 2>&1
 
 # Make sure we have the latest flambda compiler
 ###
 
+OLD_GIT_HASH=$(switch-hash)
 opam update
 opam upgrade --switch flambda ocaml --yes
+FLAMBDA_GIT_HASH=$(switch-hash)
+
+LOGDIR=$DATE-$FLAMBDA_GIT_HASH
+if [ "$OPAMBUILDTEST" -ne 0 ]; then LOGDIR=$LOGDIR+tests; fi
+if [ "$OPAMJOBS" -ne 1 ]; then LOGDIR=$LOGDIR-x$OPAMJOBS; fi
+mv $LOGDIR_TMP $LOGDIR
+
+if [ "$OLD_GIT_HASH" = "$FLAMBDA_GIT_HASH" ]; then
+    echo "Same git hash $FLAMBDA_GIT_HASH, skipping run" >$LOGDIR/log
+    exit 0
+fi
 
 # Backup clean switches
 ###
@@ -38,11 +59,6 @@ done
 
 # Run the install tests
 ###
-
-LOGDIR=$(date +%Y-%m-%d-%H%M)-$(opam show ocaml --switch flambda --field pinned | sed 's/.*(\(.*\))/\1/')
-if [ "$OPAMBUILDTEST" -ne 0 ]; then LOGDIR=$LOGDIR+tests; fi
-if [ "$OPAMJOBS" -ne 1 ]; then LOGDIR=$LOGDIR-x$OPAMJOBS; fi
-mkdir $LOGDIR
 
 cat <<EOF >$LOGDIR/conf
 TEST_SWITCHES=(${TEST_SWITCHES[*]})
@@ -83,7 +99,8 @@ done
 
 rm -rf latest
 mkdir latest
-echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=/'"$LOGDIR"'/" /></head></html>' >latest/index.html
+echo $FLAMBDA_GIT_HASH >latest/ref
+echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=../'"$LOGDIR"'/" /></head></html>' >latest/index.html
 
 echo "Done. All logs in $PWD/$LOGDIR"
 ENDTIME=$(date +%s)
