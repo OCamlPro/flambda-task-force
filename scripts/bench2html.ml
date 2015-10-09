@@ -5,6 +5,9 @@ let title = Sys.argv.(1)
 let comparison_switch = if Array.length Sys.argv < 3 then "comparison+bench" else Sys.argv.(2)
 let result_switch = if Array.length Sys.argv < 4 then "flambda+bench" else Sys.argv.(3)
 
+let short_switch_name sw =
+  try String.sub sw 0 (String.index sw '@') with Not_found -> sw
+
 let ( @* ) g f x = g (f x)
 
 let ignored_topics = [
@@ -117,8 +120,8 @@ let collect () =
               <:html<$html$
                      <tr><td class="bench-topic">$str:bench$</td>
                      $scorebar$
-                     $td comparison$
                      $td result$
+                     $td comparison$
                      </tr>&>>)
             m ([],<:html<&>>)
         in
@@ -146,8 +149,8 @@ let collect () =
             <thead><tr>
               <th>Benchmark</th>
               <th>Relative score</th>
-              <th>Absolute score</th>
-              <th>Reference score</th>
+              <th>$str:short_switch_name result_switch$</th>
+              <th>$str:short_switch_name comparison_switch$</th>
             </tr></thead>
             <tbody>
               $table_contents$
