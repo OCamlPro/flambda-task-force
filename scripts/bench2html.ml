@@ -5,6 +5,8 @@ let title = Sys.argv.(1)
 let comparison_switch = if Array.length Sys.argv < 3 then "comparison+bench" else Sys.argv.(2)
 let result_switch = if Array.length Sys.argv < 4 then "flambda+bench" else Sys.argv.(3)
 
+let ( @* ) g f x = g (f x)
+
 let ignored_topics = [
   "heap_words"; "heap_chunks";
   "live_words"; "live_blocks";
@@ -13,9 +15,15 @@ let ignored_topics = [
 ]
 
 let score ~result ~comparison =
-  let r, c = Summary.Aggr.(result.mean, comparison.mean) in
-  if r < c then c /. r -. 1.
-  else 1. -. r /. c
+  let open Summary.Aggr in
+  if result.mean = comparison.mean then 1.
+  else result.mean /. comparison.mean
+
+let print_score score =
+  let percent = score *. 100. -. 100. in
+  Printf.sprintf "%+.*f%%"
+    (max 0 (2 - truncate (log10 (abs_float percent))))
+    percent
 
 let scorebar ~result ~comparison =
   let r, c = Summary.Aggr.(result.mean, comparison.mean) in
@@ -35,6 +43,33 @@ let scorebar ~result ~comparison =
   Printf.sprintf "min-width:300px;background:linear-gradient(to right,%s);border:1px solid #eee;"
     (String.concat "," (List.map (fun (c,p) -> Printf.sprintf "%s %.0f%%" c p) gradient))
 
+(* adds _ separators every three digits for readability *)
+let print_float f =
+  if classify_float f <> FP_normal then Printf.sprintf "%.3f" f else
+  let rec split f =
+    if abs_float f >= 1000. then
+      mod_float (abs_float f) 1000. ::
+      split (f /. 1000.)
+    else [f]
+  in
+  match split f with
+  | [] -> assert false
+  | [f] -> Printf.sprintf "%.3f" f
+  | last::r ->
+    let first, middle = match List.rev r with
+      | first::r -> first, r
+      | _ -> assert false
+    in
+    String.concat "_"
+      (Printf.sprintf "%d" (truncate first) ::
+       List.map (Printf.sprintf "%03d" @* truncate) middle @
+       [Printf.sprintf "%03.f" last])
+
+let topic_unit = function
+  | Topic.Topic (_, Topic.Time) -> Some "ns"
+  | Topic.Topic (_, Topic.Size) -> Some "bytes"
+  | _ -> None
+
 let collect () =
   let bench_dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true macro_dir)) in
   (* Refresh summary files, which may be needed sometimes *)
@@ -52,61 +87,62 @@ let collect () =
         if List.mem (Topic.to_string topic) ignored_topics then html else
         let bench_all, bench_html =
           SMap.fold (fun bench m (acc,html) ->
-              let td r =
-                let open Summary.Aggr in
-                let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
-                <:html< <td style="text-align:right;" title="$str:tooltip$">
-                          $str:Printf.sprintf "%.0f" r.mean$
-                        </td>&>>
-              in
+              let open Summary.Aggr in
               let comparison = try Some (SMap.find comparison_switch m) with Not_found -> None in
               let result = try Some (SMap.find result_switch m) with Not_found -> None in
-              match comparison, result with
-              | (None | Some {Summary.Aggr.success = false;_}),
-                (None | Some {Summary.Aggr.success = false;_}) ->
-                acc,
-                <:html<$html$<tr><td>$str:bench$</td>
-                       <td style="background-color:#ffff00; text-align:center">ERR</td>
-                       <td style="text-align:right">-</td>
-                       <td style="text-align:right">-</td>
-                       </tr>&>>
-              | Some ({Summary.Aggr.success = true;_} as comparison),
-                (None | Some {Summary.Aggr.success = false;_}) ->
-                acc,
-                <:html<$html$<tr><td>$str:bench$</td>
-                       <td style="background-color:#ff0000; text-align:center">ERR</td>
-                       $td comparison$
-                       <td style="text-align:right">-</td>
-                       </tr>&>>
-              | (None | Some {Summary.Aggr.success = false;_}),
-                Some ({Summary.Aggr.success = true;_} as result) ->
-                acc,
-                <:html<$html$<tr><td>$str:bench$</td>
-                       <td style="background-color:#00ff00; text-align:center">ERR</td>
-                       <td style="text-align:right">-</td>
-                       $td result$
-                       </tr>&>>
-              | Some comparison, Some result ->
-                let score = score ~result ~comparison in
-                let score = if classify_float score = FP_nan then 0. else score in
-                (if classify_float score = FP_infinite then acc else score::acc),
-                <:html<$html$
-                         <tr>
-                            <td>$str:bench$</td>
-                            <td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
-                              $str:Printf.sprintf "%+0.3f" score$
-                            </td>
-                            $td result$
-                            $td comparison$
-                         </tr>&>>)
+              let acc, scorebar =
+                match comparison, result with
+                | Some ({success = true; _} as comparison),
+                  Some ({success = true; _} as result) ->
+                  let score = score ~result ~comparison in
+                  (match classify_float (log score) with
+                   | FP_nan | FP_infinite -> acc
+                   | _ -> score :: acc),
+                  <:html<<td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
+                           $str:print_score score$
+                         </td>&>>
+                | _ ->
+                  acc,
+                  <:html<<td style="min-width:300px;background:#eaeaea;
+                                    border:1px solid #eee;text-align:right;">
+                         ERR</td>&>>
+              in
+              let td = function
+                | Some ({success = true; _} as r) ->
+                  let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
+                  <:html<<td style="text-align:right;" title="$str:tooltip$">
+                           $str:print_float r.mean$
+                         </td>&>>
+                | Some ({success = false; _}) ->
+                  <:html<<td style="text-align:right;background-color:#dd6666;">
+                         ERR(run)</td>&>>
+                | None ->
+                  <:html<<td style="text-align:right;background-color:#dd6666;">
+                         ERR(build)</td>&>>
+              in
+              acc,
+              <:html<$html$
+                     <tr><td>$str:bench$</td>
+                     $scorebar$
+                     $td comparison$
+                     $td result$
+                     </tr>&>>)
             m ([],<:html<&>>)
         in
-        let avgscore = List.fold_left (+.) 0. bench_all /.
-                       float (List.length bench_all) in
+        let avgscore =
+          exp @@
+          List.fold_left (fun acc s -> acc +. log s) 0. bench_all /.
+          float (List.length bench_all)
+        in
+        let unit =
+          match topic_unit topic with
+          | Some u -> Printf.sprintf " (%s)" u
+          | None -> ""
+        in
         <:html<$html$
                <tr style="background: #cce;">
-                 <th style="text-align:left;">$str:Topic.to_string topic$</th>
-                 <td style="text-align:right;">$str:Printf.sprintf "%+0.3f" avgscore$</td>
+                 <th style="text-align:left;">$str:Topic.to_string topic$$str:unit$</th>
+                 <td style="text-align:right;">$str:print_score avgscore$</td>
                  <td></td>
                  <td></td>
                </tr>
@@ -132,6 +168,7 @@ let () =
                   <body>
                     <h1>Operf-macro comparison</h1>
                     <h3>$str:title$</h3>
+                    <p>For all the measures below, smaller is better</p>
                     $table$
                   </body>
             </html>&>>
