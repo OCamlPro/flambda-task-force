@@ -31,16 +31,16 @@ let scorebar ~result ~comparison =
   let leftpercent = 50. +. 50. *. (min 0. score) in
   let rightpercent = 50. +. 50. *. (max 0. score) in
   let gradient = [
-    "#ffffff", 0.;
-    "#ffffff", leftpercent;
+    "transparent", 0.;
+    "transparent", leftpercent;
     "#ff0000", leftpercent;
     "#ff0000", 50.;
     "#00ff00", 50.;
     "#00ff00", rightpercent;
-    "#ffffff", rightpercent;
-    "#ffffff", 100.;
+    "transparent", rightpercent;
+    "transparent", 100.;
   ] in
-  Printf.sprintf "min-width:300px;background:linear-gradient(to right,%s);border:1px solid #eee;"
+  Printf.sprintf "background:linear-gradient(to right,%s);"
     (String.concat "," (List.map (fun (c,p) -> Printf.sprintf "%s %.0f%%" c p) gradient))
 
 (* adds _ separators every three digits for readability *)
@@ -98,31 +98,24 @@ let collect () =
                   (match classify_float (log score) with
                    | FP_nan | FP_infinite -> acc
                    | _ -> score :: acc),
-                  <:html<<td style="$str:scorebar ~result ~comparison ^ "text-align:right;"$">
+                  <:html<<td class="scorebar" style="$str:scorebar ~result ~comparison$">
                            $str:print_score score$
                          </td>&>>
                 | _ ->
-                  acc,
-                  <:html<<td style="min-width:300px;background:#eaeaea;
-                                    border:1px solid #eee;text-align:right;">
-                         ERR</td>&>>
+                  acc, <:html<<td>ERR</td>&>>
               in
               let td = function
                 | Some ({success = true; _} as r) ->
                   let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
-                  <:html<<td style="text-align:right;" title="$str:tooltip$">
-                           $str:print_float r.mean$
-                         </td>&>>
+                  <:html<<td title="$str:tooltip$">$str:print_float r.mean$</td>&>>
                 | Some ({success = false; _}) ->
-                  <:html<<td style="text-align:right;background-color:#dd6666;">
-                         ERR(run)</td>&>>
+                  <:html<<td class="error">ERR(run)</td>&>>
                 | None ->
-                  <:html<<td style="text-align:right;background-color:#dd6666;">
-                         ERR(build)</td>&>>
+                  <:html<<td class="error">ERR(build)</td>&>>
               in
               acc,
               <:html<$html$
-                     <tr><td>$str:bench$</td>
+                     <tr><td class="bench-topic">$str:bench$</td>
                      $scorebar$
                      $td comparison$
                      $td result$
@@ -140,16 +133,16 @@ let collect () =
           | None -> ""
         in
         <:html<$html$
-               <tr style="background: #cce;">
-                 <th style="text-align:left;">$str:Topic.to_string topic$$str:unit$</th>
-                 <td style="text-align:right;">$str:print_score avgscore$</td>
+               <tr class="bench-topic">
+                 <th>$str:Topic.to_string topic$$str:unit$</th>
+                 <td>$str:print_score avgscore$</td>
                  <td></td>
                  <td></td>
                </tr>
                $bench_html$>>)
       data2 <:html<&>>
   in
-  <:html< <table style="margin:auto;border-collapse:collapse;">
+  <:html< <table>
             <thead><tr>
               <th>Benchmark</th>
               <th>Relative score</th>
@@ -161,16 +154,52 @@ let collect () =
             </tbody>
           </table>&>>
 
+let css = "
+    table {
+      margin: auto;
+      //border-collapse: collapse;
+    }
+    .bench-topic {
+      text-align: left;
+    }
+    th {
+      text-align: left;
+    }
+    td {
+      padding: 2px;
+      text-align: right;
+    }
+    .scorebar {
+      min-width: 300px;
+      //border: 1px solid #e5e5e5;
+    }
+    tr:nth-child(even) {
+      background-color: #e5e5e5;
+    }
+    tr.bench-topic {
+      background: #cce;
+    }
+    .error {
+      background-color: #dd6666;
+    }
+"
+
 let () =
   let table = collect () in
   let html =
-    <:html< <html><head><title>Operf-macro, $str:title$</title></head>
-                  <body>
-                    <h1>Operf-macro comparison</h1>
-                    <h3>$str:title$</h3>
-                    <p>For all the measures below, smaller is better</p>
-                    $table$
-                  </body>
-            </html>&>>
+    <:html<
+      <html>
+        <head>
+          <title>Operf-macro, $str:title$</title>
+          <style type="text/css">$str:css$</style>
+        </head>
+        <body>
+          <h1>Operf-macro comparison</h1>
+          <h3>$str:title$</h3>
+          <p>For all the measures below, smaller is better</p>
+          $table$
+        </body>
+      </html>
+    >>
   in
   output_string stdout (Html.to_string html)
