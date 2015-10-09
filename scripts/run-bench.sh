@@ -53,7 +53,7 @@ upgrade_switch() {
     opam reinstall all-bench --criteria="-count(removed),-sum(solution,version-lag),-count(down),-count(up)" --yes --json $LOGDIR/$OPAMSWITCH.json
     # Install operf-macro on all switches, because it pulls dependencies that
     # trigger depopts in some benches, and we want exactly the same setup.
-    opam install operf-macro --json $LOGDIR/$OPAMSWITCH-operf.json
+    opam install operf-macro --yes --json $LOGDIR/$OPAMSWITCH-operf.json
 }
 
 upgrade_switch $REFSWITCH
