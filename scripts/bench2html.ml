@@ -73,6 +73,18 @@ let topic_unit = function
   | Topic.Topic (_, Topic.Size) -> Some "bytes"
   | _ -> None
 
+let get_bench_error switch bench =
+  let res = Result.load_conv_exn Util.FS.(macro_dir / bench / switch ^ ".result") in
+  match
+    List.fold_left (fun acc -> function
+        | `Ok {Execution.process_status = Unix.WEXITED 0} -> acc
+        | `Ok ({Execution.process_status = _} as ex) -> Some ex
+        | _ -> None)
+      None res.Result.execs
+  with
+  | Some ex -> Execution.(ex.stdout, ex.stderr)
+  | None -> raise Not_found
+
 let collect () =
   let bench_dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true macro_dir)) in
   (* Refresh summary files, which may be needed sometimes *)
@@ -85,11 +97,12 @@ let collect () =
       (fun bench context_id topic -> DB2.add topic bench context_id)
       data1 DB2.empty
   in
-  let table_contents =
-    TMap.fold (fun topic m html ->
-        if List.mem (Topic.to_string topic) ignored_topics then html else
-        let bench_all, bench_html =
-          SMap.fold (fun bench m (acc,html) ->
+  let logkey ~switch ~bench = "log-" ^ switch ^"-"^ bench in
+  let logs, table_contents =
+    TMap.fold (fun topic m (logs,html) ->
+        if List.mem (Topic.to_string topic) ignored_topics then logs,html else
+        let bench_all, logs, bench_html =
+          SMap.fold (fun bench m (acc,logs,html) ->
               let open Summary.Aggr in
               let comparison = try Some (SMap.find comparison_switch m) with Not_found -> None in
               let result = try Some (SMap.find result_switch m) with Not_found -> None in
@@ -107,23 +120,31 @@ let collect () =
                 | _ ->
                   acc, <:html<<td>ERR</td>&>>
               in
-              let td = function
+              let td logs swname = function
                 | Some ({success = true; _} as r) ->
                   let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
+                  logs,
                   <:html<<td title="$str:tooltip$">$str:print_float r.mean$</td>&>>
                 | Some ({success = false; _}) ->
-                  <:html<<td class="error">ERR(run)</td>&>>
+                  let k = logkey ~switch:swname ~bench in
+                  (if SMap.mem k logs then logs
+                   else try SMap.add k (get_bench_error swname bench) logs with _ -> logs),
+                  <:html<<td class="error"><a href="$str:"#"^k$">ERR(run)</a></td>&>>
                 | None ->
+                  logs,
                   <:html<<td class="error">ERR(build)</td>&>>
               in
+              let logs, td_result = td logs result_switch result in
+              let logs, td_compar = td logs comparison_switch comparison in
               acc,
+              logs,
               <:html<$html$
                      <tr><td class="bench-topic">$str:bench$</td>
                      $scorebar$
-                     $td result$
-                     $td comparison$
+                     $td_result$
+                     $td_compar$
                      </tr>&>>)
-            m ([],<:html<&>>)
+            m ([],logs,<:html<&>>)
         in
         let avgscore =
           exp @@
@@ -135,6 +156,7 @@ let collect () =
           | Some u -> Printf.sprintf " (%s)" u
           | None -> ""
         in
+        logs,
         <:html<$html$
                <tr class="bench-topic">
                  <th>$str:Topic.to_string topic$$str:unit$</th>
@@ -143,7 +165,18 @@ let collect () =
                  <td></td>
                </tr>
                $bench_html$>>)
-      data2 <:html<&>>
+      data2 (SMap.empty, <:html<&>>)
+  in
+  let html_logs =
+    SMap.fold (fun id (stdout, stderr) html ->
+        <:html< $html$
+                <div class="logs" id="$str:id$">
+                  <a class="close" href="#">Close</a>
+                  <h3>Error running bench $str:id$</h3>
+                  <h4>Stdout</h4><pre>$str:stdout$</pre>
+                  <h4>Stderr</h4><pre>$str:stderr$</pre>
+                </div>&>>)
+      logs <:html<&>>
   in
   <:html< <table>
             <thead><tr>
@@ -155,12 +188,19 @@ let collect () =
             <tbody>
               $table_contents$
             </tbody>
-          </table>&>>
+          </table>
+          $html_logs$&>>
 
 let css = "
     table {
       margin: auto;
       //border-collapse: collapse;
+    }
+    thead {
+      position:-webkit-sticky;
+      position:-moz-sticky;
+      position:sticky;
+      top:0;
     }
     .bench-topic {
       text-align: left;
@@ -184,6 +224,40 @@ let css = "
     }
     .error {
       background-color: #dd6666;
+    }
+
+    # For error logs
+    div {
+      padding: 3ex;
+    }
+    pre {
+      padding: 1ex;
+      border: 1px solid grey;
+      background-color: #eee;
+    }
+    .logs {
+      display: none;
+    }
+    .logs:target {
+      display: block;
+      position: fixed;
+      top: 5%;
+      left: 5%;
+      right: 5%;
+      bottom: 5%;
+      border: 1px solid black;
+      background-color: white;
+      overflow: scroll;
+      z-index: 10;
+    }
+    .close {
+      display: block;
+      position: fixed;
+      top: 7%;
+      right: 7%;
+    }
+    a:target {
+      background-color: #e0e000;
     }
 "
 
