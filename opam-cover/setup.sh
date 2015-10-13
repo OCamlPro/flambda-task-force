@@ -57,6 +57,7 @@ done
 
 # Pin the flambda compiler so that it can be later upgraded
 opam pin add --switch flambda ocaml 'git://github.com/chambart/ocaml-1#flambda_trunk' --yes --no-action
+opam pin add --switch comparison ocaml 'git://github.com/chambart/ocaml-1#comparison_branch' --yes --no-action
 
 
 # Package fixes
@@ -86,6 +87,8 @@ for OPAMSWITCH in "${TEST_SWITCHES[@]}"; do
     opam pin add type_conv git://github.com/janestreet/type_conv.git#112.01.02 \
          --no-action --yes
 done
+# get the right version of camlp4 for flambda
+opam pin add camlp4 git://github.com/ocaml/camlp4#2552bba33463ac1c4f00d5b74fe767d5c1873f89 --switch flambda
 
 # Install all depexts
 ###
