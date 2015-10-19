@@ -122,7 +122,7 @@ let collect () =
               in
               let td logs swname = function
                 | Some ({success = true; _} as r) ->
-                  let tooltip = Printf.sprintf "%d runs, stddev %.0f" r.runs r.stddev in
+                  let tooltip = Printf.sprintf "%d runs, stddev %s" r.runs (print_float r.stddev) in
                   logs,
                   <:html<<td title="$str:tooltip$">$str:print_float r.mean$</td>&>>
                 | Some ({success = false; _}) ->
