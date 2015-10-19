@@ -14,7 +14,7 @@ export OPAMBUILDTEST=0
 cd ~/logs
 
 switch-hash () {
-  opam show ocaml --switch flambda --field pinned | sed 's/.*(\(.*\))/\1/'
+  opam show ocaml --switch $1 --field pinned | sed 's/.*(\(.*\))/\1/'
 }
 
 DATE=$(date +%Y-%m-%d-%H%M)
@@ -33,17 +33,21 @@ exec >$LOGDIR/log 2>&1
 # Make sure we have the latest flambda compiler
 ###
 
-OLD_GIT_HASH=$(switch-hash)
+OLD_COMPARISON_HASH=$(switch-hash comparison)
+OLD_GIT_HASH=$(switch-hash flambda)
 opam update
-opam upgrade --switch flambda ocaml --yes
-FLAMBDA_GIT_HASH=$(switch-hash)
+opam install --upgrade --switch comparison ocaml --yes
+COMPARISON_GIT_HASH=$(switch-hash comparison)
+opam install --upgrade --switch flambda ocaml --yes
+FLAMBDA_GIT_HASH=$(switch-hash flambda)
 
 LOGDIR=$DATE-$FLAMBDA_GIT_HASH
 if [ "$OPAMBUILDTEST" -ne 0 ]; then LOGDIR=$LOGDIR+tests; fi
 if [ "$OPAMJOBS" -ne 1 ]; then LOGDIR=$LOGDIR-x$OPAMJOBS; fi
 mv $LOGDIR_TMP $LOGDIR
 
-if [ "$OLD_GIT_HASH" = "$FLAMBDA_GIT_HASH" ]; then
+if [ "$OLD_COMPARISON_HASH" = "$COMPARISON_GIT_HASH" ] || \
+   [ "$OLD_GIT_HASH" = "$FLAMBDA_GIT_HASH" ]; then
     echo "Same git hash $FLAMBDA_GIT_HASH, skipping run" >$LOGDIR/log
     exit 0
 fi
