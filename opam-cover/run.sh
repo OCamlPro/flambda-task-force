@@ -46,9 +46,9 @@ if [ "$OPAMBUILDTEST" -ne 0 ]; then LOGDIR=$LOGDIR+tests; fi
 if [ "$OPAMJOBS" -ne 1 ]; then LOGDIR=$LOGDIR-x$OPAMJOBS; fi
 mv $LOGDIR_TMP $LOGDIR
 
-if [ "$OLD_COMPARISON_HASH" = "$COMPARISON_GIT_HASH" ] || \
+if [ "$OLD_COMPARISON_HASH" = "$COMPARISON_GIT_HASH" ] && \
    [ "$OLD_GIT_HASH" = "$FLAMBDA_GIT_HASH" ]; then
-    echo "Same git hash $FLAMBDA_GIT_HASH, skipping run" >$LOGDIR/log
+    echo "Same git hashes $FLAMBDA_GIT_HASH vs $COMPARISON_GIT_HASH, skipping run" >$LOGDIR/log
     exit 0
 fi
 
