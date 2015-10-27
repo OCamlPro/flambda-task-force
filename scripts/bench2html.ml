@@ -194,7 +194,6 @@ let collect () =
 let css = "
     table {
       margin: auto;
-      //border-collapse: collapse;
     }
     thead {
       position:-webkit-sticky;
@@ -214,7 +213,6 @@ let css = "
     }
     .scorebar {
       min-width: 300px;
-      //border: 1px solid #e5e5e5;
     }
     tr:nth-child(even) {
       background-color: #e5e5e5;
@@ -226,7 +224,6 @@ let css = "
       background-color: #dd6666;
     }
 
-    # For error logs
     div {
       padding: 3ex;
     }
