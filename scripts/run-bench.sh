@@ -43,14 +43,11 @@ opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$
 
 upgrade_switch() {
     local OPAMSWITCH="$1"; shift
+    [ $# -eq 0 ]
     export OPAMSWITCH
+    opam update --dev
     echo
     echo "=== UPGRADING SWITCH $OPAMSWITCH =="
-    if [ $# -gt 0 ]; then
-        local OCAMLPARAM="$1"; shift
-        export OCAMLPARAM
-    fi
-    [ $# -eq 0 ]
     local OLDREF=$(switch-hash $OPAMSWITCH)
     # Requires trunk opam (as of 09-19) to recompile everything properly on
     # ocaml change!
@@ -60,7 +57,7 @@ upgrade_switch() {
 upgrade_switch $REFSWITCH
 upgrade_switch $SWITCH
 upgrade_switch $TRUNKSWITCH
-upgrade_switch $OPTSWITCH "_,$OPT_PARAMS"
+upgrade_switch $OPTSWITCH
 
 RUNNAME=$DATE-$(switch-hash $SWITCH)-$(switch-hash $REFSWITCH)
 
@@ -69,24 +66,32 @@ mv $LOGDIR_TMP $LOGDIR
 
 opamjson2html $LOGDIR/$REFSWITCH.json* $LOGDIR/$SWITCH.json* $LOGDIR/$TRUNKSWITCH.json* $LOGDIR/$OPTSWITCH.json* >$LOGDIR/build.html
 
+UPGRADE_TIME=$(($(date +%s) - STARTTIME))
+
+echo -e "\n===== OPAM UPGRADE DONE in ${UPGRADE_TIME}s =====\n"
+
 eval $(opam config env --switch $SWITCH)
 
 loadavg() {
   awk '{print 100*$1}' /proc/loadavg
 }
-# let the loadavg settle down...
-sleep 60
 
-while [ $(loadavg) -gt 60 ]; do
-    if [ $(($(date +%s) - STARTTIME)) -gt $((3600 * 12)) ]; then
-        echo "COULD NOT START FOR THE PAST 12 HOURS; ABORTING RUN" >&2
-        exit 10
-    else
-        echo "System load detected, waiting to run bench (retrying in 5 minutes)"
-        wall "It's BENCH STARTUP TIME, but the load is too high. Please clear the way!"
-        sleep 300
-    fi
-done
+if [ "x$1" != "x--nowait" ]; then
+
+    # let the loadavg settle down...
+    sleep 60
+
+    while [ $(loadavg) -gt 60 ]; do
+        if [ $(($(date +%s) - STARTTIME)) -gt $((3600 * 12)) ]; then
+            echo "COULD NOT START FOR THE PAST 12 HOURS; ABORTING RUN" >&2
+            exit 10
+        else
+            echo "System load detected, waiting to run bench (retrying in 5 minutes)"
+            wall "It's BENCH STARTUP TIME, but the load is too high. Please clear the way!"
+            sleep 300
+        fi
+    done
+fi
 
 rm -f $OPERFDIR/*/$SWITCH.*
 rm -f $OPERFDIR/*/$REFSWITCH.*
@@ -94,6 +99,8 @@ rm -f $OPERFDIR/*/$TRUNKSWITCH.*
 rm -f $OPERFDIR/*/$OPTSWITCH.*
 
 wall " -- STARTING BENCHES -- don't put load on the machine. Thanks"
+
+BENCH_START_TIME=$(date +%s)
 
 echo
 echo "=== BENCH START ==="
@@ -105,6 +112,8 @@ nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $
 mkdir -p $LOGDIR
 cp -r $OPERFDIR/* $LOGDIR
 opam config exec --switch $OPERF_SWITCH -- operf-macro summarize -b csv >$LOGDIR/summary.csv
+
+BENCH_TIME=$(($(date +%s) - BENCH_START_TIME))
 
 cd $BASELOGDIR
 rm -rf latest
@@ -137,8 +146,15 @@ mklog $TRUNKSWITCH $SWITCH flambda_trunk.html
 mklog $REFSWITCH $OPTSWITCH flambdopt_base.html " with $OPT_PARAMS"
 mklog $REFSWITCH $TRUNKSWITCH trunk_base.html
 
+hours() {
+    printf "%02d:%02d:%02d" $(($1 / 3600)) $(($1 / 60 % 60)) $(($1 % 60))
+}
+
 cat >> $LOGDIR/index.html <<EOF
 </ul>
+<p>Upgrade took $(hours $UPGRADE_TIME)</p>
+<p>Running benches took $(hours $BENCH_TIME)</p>
+<p>Total time $(hours $((UPGRADE_TIME + BENCH_TIME)))</p>
 </body>
 </html>
 EOF
