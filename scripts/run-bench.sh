@@ -15,7 +15,6 @@ REFSWITCH=comparison+bench
 TRUNKSWITCH=trunk+bench
 OPTSWITCH=flambda-opt+bench
 
-OPT_PARAMS="inline=50,rounds=3,unroll=1,inline-call-cost=20,inline-alloc-cost=3,inline-prim-cost=3,inline-branch-cost=3,functor-heuristics=1"
 # These seem problematic: branch-inline-factor=0.500000 remove-unused-arguments=1. Obsolete ?
 
 STARTTIME=$(date +%s)
@@ -133,8 +132,8 @@ mklog() {
     BASE=$1; shift
     TEST=$1; shift
     FILE=$1; shift
-    if [ $# -gt 0 ]; then NOTE=$1; shift; else NOTE=; fi
     [ $# -eq 0 ]
+    NOTE=$(opam config env --switch $TEST | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/ with \1/p')
     bench2html \
         "$DATE ${TEST%+bench}@$(switch-hash $TEST) versus ${BASE%+bench}@$(switch-hash $BASE)$NOTE" \
         $BASE $TEST >$LOGDIR/$FILE
