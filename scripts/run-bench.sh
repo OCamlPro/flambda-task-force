@@ -140,9 +140,10 @@ mklog() {
     echo "<li><a href="$FILE">${TEST%+bench} vs ${BASE%+bench}$NOTE</a></li>" >> $LOGDIR/index.html
 }
 
-mklog $REFSWITCH $SWITCH flambda_base.html
 mklog $TRUNKSWITCH $SWITCH flambda_trunk.html
-mklog $REFSWITCH $OPTSWITCH flambdopt_base.html " with $OPT_PARAMS"
+mklog $TRUNKSWITCH $OPTSWITCH flambdopt_base.html
+mklog $REFSWITCH $SWITCH flambda_base.html
+mklog $REFSWITCH $OPTSWITCH flambdopt_base.html
 mklog $REFSWITCH $TRUNKSWITCH trunk_base.html
 
 hours() {
