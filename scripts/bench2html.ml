@@ -10,17 +10,25 @@ let short_switch_name sw =
 
 let ( @* ) g f x = g (f x)
 
-let ignored_topics = [
-  "heap_words"; "heap_chunks";
-  "live_words"; "live_blocks";
-  "free_words"; "free_blocks";
-  "largest_free"; "fragments";
-]
+let ignored_topics = Topic.([
+  Topic (Gc.Heap_words, Gc);
+  Topic (Gc.Heap_chunks, Gc);
+  Topic (Gc.Live_words, Gc);
+  Topic (Gc.Live_blocks, Gc);
+  Topic (Gc.Free_words, Gc);
+  Topic (Gc.Free_blocks, Gc);
+  Topic (Gc.Largest_free, Gc);
+  Topic (Gc.Fragments, Gc);
+])
 
-let score ~result ~comparison =
+let score topic ~result ~comparison =
   let open Summary.Aggr in
-  if result.mean = comparison.mean then 1.
-  else result.mean /. comparison.mean
+  if result.mean = comparison.mean then 1. else
+  match topic with
+  | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
+    (* Comparing ratios: use a difference *)
+    1. +. result.mean -. comparison.mean
+  | _ -> result.mean /. comparison.mean
 
 let print_score score =
   let percent = score *. 100. -. 100. in
@@ -28,50 +36,69 @@ let print_score score =
     (max 0 (2 - truncate (log10 (abs_float percent))))
     percent
 
-let scorebar ~result ~comparison =
-  let r, c = Summary.Aggr.(result.mean, comparison.mean) in
-  let score = if r < c then 1. -. r /. c else c /. r -. 1. in
-  let leftpercent = 50. +. 50. *. (min 0. score) in
-  let rightpercent = 50. +. 50. *. (max 0. score) in
+let average_score topic scores = match topic with
+  | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words -> (* linear *)
+    List.fold_left ( +. ) 0. scores /. float (List.length scores)
+  | _ -> (* geometric *)
+    exp @@
+    List.fold_left (fun acc s -> acc +. log s) 0. scores /.
+    float (List.length scores)
+
+let scorebar_style topic score =
+  let leftpercent, rightpercent = match topic with
+    | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
+      if score < 1. then 50., 100. -. 50. *. score
+      else 100. -. 50. *. score -. 1., 50.
+    | _ ->
+      if score < 1. then 50., 100. -. 50. *. score
+      else 50. /. score, 50.
+  in
   let gradient = [
     "transparent", 0.;
     "transparent", leftpercent;
-    "#ff0000", leftpercent;
-    "#ff0000", 50.;
-    "#00ff00", 50.;
-    "#00ff00", rightpercent;
+    "#ff5555", leftpercent;
+    "#ff5555", 50.;
+    "#55ff88", 50.;
+    "#55ff88", rightpercent;
     "transparent", rightpercent;
     "transparent", 100.;
   ] in
-  Printf.sprintf "background:linear-gradient(to right,%s);"
+  Printf.sprintf "background:linear-gradient(to right,%s);border:1px solid %s"
     (String.concat "," (List.map (fun (c,p) -> Printf.sprintf "%s %.0f%%" c p) gradient))
+    (if score <= 1. then "#33bb66" else "#bb4444")
 
 (* adds _ separators every three digits for readability *)
 let print_float f =
-  if classify_float f <> FP_normal then Printf.sprintf "%.3f" f else
-  let rec split f =
-    if abs_float f >= 1000. then
-      mod_float (abs_float f) 1000. ::
-      split (f /. 1000.)
-    else [f]
-  in
-  match split f with
-  | [] -> assert false
-  | [f] -> Printf.sprintf "%.3f" f
-  | last::r ->
-    let first, middle = match List.rev r with
-      | first::r -> first, r
-      | _ -> assert false
+  match classify_float f with
+  | FP_zero -> "0"
+  | FP_infinite | FP_subnormal | FP_nan -> Printf.sprintf "%.3f" f
+  | FP_normal ->
+    let rec split f =
+      if abs_float f >= 1000. then
+        mod_float (abs_float f) 1000. ::
+        split (f /. 1000.)
+      else [f]
     in
-    String.concat "_"
-      (Printf.sprintf "%d" (truncate first) ::
-       List.map (Printf.sprintf "%03d" @* truncate) middle @
-       [Printf.sprintf "%03.f" last])
+    match split f with
+    | [] -> assert false
+    | [f] ->
+      if truncate ((mod_float f 1.) *. 1000.) = 0
+      then Printf.sprintf "%.f" f
+      else Printf.sprintf "%.3f" f
+    | last::r ->
+      let first, middle = match List.rev r with
+        | first::r -> first, r
+        | _ -> assert false
+      in
+      String.concat "_"
+        (Printf.sprintf "%d" (truncate first) ::
+         List.map (Printf.sprintf "%03d" @* truncate) middle @
+         [Printf.sprintf "%03.f" last])
 
 let topic_unit = function
-  | Topic.Topic (_, Topic.Time) -> Some "ns"
-  | Topic.Topic (_, Topic.Size) -> Some "bytes"
-  | _ -> None
+  | Topic.Topic (_, Topic.Time) -> " (ns)"
+  | Topic.Topic (_, Topic.Size) -> " (bytes)"
+  | _ -> ""
 
 let get_bench_error switch bench =
   let res = Result.load_conv_exn Util.FS.(macro_dir / bench / switch ^ ".result") in
@@ -89,18 +116,18 @@ let collect () =
   let bench_dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true macro_dir)) in
   (* Refresh summary files, which may be needed sometimes *)
   SSet.iter Summary.summarize_dir (SSet.of_list bench_dirs);
-  let data1 =
+  let data_by_bench =
     List.fold_left (fun acc dir -> DB.of_dir ~acc dir) DB.empty bench_dirs
   in
-  let data2 =
+  let data_by_topic =
     DB.fold_data
       (fun bench context_id topic -> DB2.add topic bench context_id)
-      data1 DB2.empty
+      data_by_bench DB2.empty
   in
   let logkey ~switch ~bench = "log-" ^ switch ^"-"^ bench in
-  let logs, table_contents =
-    TMap.fold (fun topic m (logs,html) ->
-        if List.mem (Topic.to_string topic) ignored_topics then logs,html else
+  let logs, avgscores, table_contents =
+    TMap.fold (fun topic m (logs,avgscores,html) ->
+        if List.mem topic ignored_topics then logs,avgscores,html else
         let bench_all, logs, bench_html =
           SMap.fold (fun bench m (acc,logs,html) ->
               let open Summary.Aggr in
@@ -110,11 +137,11 @@ let collect () =
                 match comparison, result with
                 | Some ({success = true; _} as comparison),
                   Some ({success = true; _} as result) ->
-                  let score = score ~result ~comparison in
+                  let score = score topic ~result ~comparison in
                   (match classify_float (log score) with
                    | FP_nan | FP_infinite -> acc
                    | _ -> score :: acc),
-                  <:html<<td class="scorebar" style="$str:scorebar ~result ~comparison$">
+                  <:html<<td class="scorebar" style="$str:scorebar_style topic score$">
                            $str:print_score score$
                          </td>&>>
                 | _ ->
@@ -146,26 +173,107 @@ let collect () =
                      </tr>&>>)
             m ([],logs,<:html<&>>)
         in
-        let avgscore =
-          exp @@
-          List.fold_left (fun acc s -> acc +. log s) 0. bench_all /.
-          float (List.length bench_all)
-        in
-        let unit =
-          match topic_unit topic with
-          | Some u -> Printf.sprintf " (%s)" u
-          | None -> ""
-        in
+        let avgscore = average_score topic bench_all in
         logs,
+        TMap.add topic avgscore avgscores,
         <:html<$html$
                <tr class="bench-topic">
-                 <th>$str:Topic.to_string topic$$str:unit$</th>
+                 <th>$str:Topic.to_string topic$$str:topic_unit topic$</th>
                  <td>$str:print_score avgscore$</td>
                  <td></td>
                  <td></td>
                </tr>
                $bench_html$>>)
-      data2 (SMap.empty, <:html<&>>)
+      data_by_topic (SMap.empty, TMap.empty, <:html<&>>)
+  in
+  let table = <:html<
+    <table>
+       <thead><tr>
+         <th>Benchmark</th>
+         <th>Relative score</th>
+         <th>$str:short_switch_name result_switch$</th>
+         <th>$str:short_switch_name comparison_switch$</th>
+       </tr></thead>
+       <tbody>
+         $table_contents$
+       </tbody>
+    </table>
+  >> in
+  let summary_table =
+    let topics =
+      TSet.of_list (List.map fst (TMap.bindings data_by_topic))
+    in
+    let topics =
+      List.fold_left (fun acc t -> TSet.remove t acc) topics ignored_topics
+    in
+    let titles =
+      TSet.fold (fun t html ->
+          let rec sp s =
+            try Bytes.set s (Bytes.index s '_') ' '; sp s
+            with Not_found -> s
+          in
+          <:html<$html$
+                 <th class="scorebar-small">
+                   $str:sp (Topic.to_string t)$
+                 </th>&>>)
+        topics <:html<<th>Benchmark</th>&>>
+    in
+    let averages =
+      TSet.fold (fun t html ->
+          let score = TMap.find t avgscores in
+          <:html<$html$
+                 <td class="scorebar-small"
+                     style="$str:scorebar_style t score$">
+                   $str:print_score score$
+                 </td>&>>)
+        topics <:html<<th>Average</th>&>>
+    in
+    let contents =
+      SMap.fold (fun bench ctx_map html ->
+          let comparison_map =
+            try (SMap.find comparison_switch ctx_map).Summary.data
+            with Not_found -> TMap.empty
+          in
+          let result_map =
+            try (SMap.find result_switch ctx_map).Summary.data
+            with Not_found -> TMap.empty
+          in
+          let topics =
+            TSet.fold (fun t html ->
+                try
+                  let open Summary.Aggr in
+                  let comparison = TMap.find t comparison_map in
+                  let result = TMap.find t result_map in
+                  if not (comparison.success && result.success) then raise Not_found;
+                  let score = score t ~result ~comparison in
+                  <:html<$html$
+                         <td class="scorebar-small" style="$str:scorebar_style t score$">
+                           $str:print_score score$
+                         </td>&>>
+                with Not_found ->
+                  let k = logkey ~switch:result_switch ~bench in
+                  if SMap.mem k logs then
+                    <:html<$html$<td class="error"><a href="$str:"#"^k$">fail</a></td>&>>
+                  else
+                    <:html<$html$<td>-</td>&>>)
+              topics <:html<&>>
+          in
+          <:html<$html$
+                 <tr>
+                   <th>$str:bench$</th>
+                   $topics$
+                 </tr>
+          >>)
+        data_by_bench <:html<&>>
+    in
+    <:html< <table>
+              <thead>
+                <tr>$titles$</tr>
+                <tr class="bench-topic">$averages$</tr>
+              </thead>
+              <tbody>$contents$</tbody>
+            </table>
+    >>
   in
   let html_logs =
     SMap.fold (fun id (stdout, stderr) html ->
@@ -178,18 +286,12 @@ let collect () =
                 </div>&>>)
       logs <:html<&>>
   in
-  <:html< <table>
-            <thead><tr>
-              <th>Benchmark</th>
-              <th>Relative score</th>
-              <th>$str:short_switch_name result_switch$</th>
-              <th>$str:short_switch_name comparison_switch$</th>
-            </tr></thead>
-            <tbody>
-              $table_contents$
-            </tbody>
-          </table>
-          $html_logs$&>>
+  <:html< <h2>Summary table</h2>
+          $summary_table$
+          <h2>Full results</h2>
+          $table$
+          $html_logs$
+  >>
 
 let css = "
     table {
@@ -213,6 +315,10 @@ let css = "
     }
     .scorebar {
       min-width: 300px;
+    }
+    .scorebar-small {
+      font-size: small;
+      width: 100px;
     }
     tr:nth-child(even) {
       background-color: #e5e5e5;
@@ -271,6 +377,8 @@ let () =
           <h1>Operf-macro comparison</h1>
           <h3>$str:title$</h3>
           <p>For all the measures below, smaller is better</p>
+          <p>Promoted words are measured as a ratio or minor words,
+             and compared linearly with the reference</p>
           $table$
         </body>
       </html>

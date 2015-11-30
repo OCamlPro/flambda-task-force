@@ -223,7 +223,7 @@ let () =
     (html_head ("FLambda comparison " ^ Filename.basename (Sys.getcwd ())));
   let full_line =
     Printf.printf "<tr><th>%s</th><td>%s</td><td>%s</td>\
-                   <td>%.3f</td><td>%.3f</td><td>%.2fx</td>\
+                   <td>%.3f</td><td>%.3f</td><td>%.2f</td>\
                    <td>%s</td><td>%s</td><td>%s</td></tr>\n"
   in
   let short_line =

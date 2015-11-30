@@ -15,8 +15,6 @@ REFSWITCH=comparison+bench
 TRUNKSWITCH=trunk+bench
 OPTSWITCH=flambda-opt+bench
 
-# These seem problematic: branch-inline-factor=0.500000 remove-unused-arguments=1. Obsolete ?
-
 STARTTIME=$(date +%s)
 
 switch-hash () {
@@ -135,13 +133,13 @@ mklog() {
     [ $# -eq 0 ]
     NOTE=$(opam config env --switch $TEST | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/ with \1/p')
     bench2html \
-        "$DATE ${TEST%+bench}@$(switch-hash $TEST) versus ${BASE%+bench}@$(switch-hash $BASE)$NOTE" \
+        "$DATE ${TEST%+bench}@$(switch-hash $TEST)$NOTE versus ${BASE%+bench}@$(switch-hash $BASE)" \
         $BASE $TEST >$LOGDIR/$FILE
     echo "<li><a href="$FILE">${TEST%+bench} vs ${BASE%+bench}$NOTE</a></li>" >> $LOGDIR/index.html
 }
 
 mklog $TRUNKSWITCH $SWITCH flambda_trunk.html
-mklog $TRUNKSWITCH $OPTSWITCH flambdopt_base.html
+mklog $TRUNKSWITCH $OPTSWITCH flambdopt_trunk.html
 mklog $REFSWITCH $SWITCH flambda_base.html
 mklog $REFSWITCH $OPTSWITCH flambdopt_base.html
 mklog $REFSWITCH $TRUNKSWITCH trunk_base.html
@@ -158,3 +156,5 @@ cat >> $LOGDIR/index.html <<EOF
 </body>
 </html>
 EOF
+
+echo "Done"
