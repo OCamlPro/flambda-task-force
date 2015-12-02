@@ -98,6 +98,8 @@ let print_float f =
 let topic_unit = function
   | Topic.Topic (_, Topic.Time) -> " (ns)"
   | Topic.Topic (_, Topic.Size) -> " (bytes)"
+  | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
+    " (relative to minor words)"
   | _ -> ""
 
 let get_bench_error switch bench =
@@ -159,7 +161,7 @@ let collect () =
                   <:html<<td class="error"><a href="$str:"#"^k$">ERR(run)</a></td>&>>
                 | None ->
                   logs,
-                  <:html<<td class="error">ERR(build)</td>&>>
+                  <:html<<td>-</td>&>>
               in
               let logs, td_result = td logs result_switch result in
               let logs, td_compar = td logs comparison_switch comparison in

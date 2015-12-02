@@ -25,12 +25,13 @@ DATE=$(date +%Y-%m-%d-%H%M)
 
 BASELOGDIR=~/logs/operf
 
-LOGDIR_TMP=$BASELOGDIR/$DATE.tmp
-LOGDIR=$LOGDIR_TMP
+LOGDIR=$BASELOGDIR/$DATE
 
 OPERFDIR=~/.cache/operf/macro/
 
 mkdir -p $LOGDIR
+
+echo "Output and log written into $LOGDIR" >&2
 
 exec >$LOGDIR/log 2>&1
 
@@ -55,11 +56,6 @@ upgrade_switch $REFSWITCH
 upgrade_switch $SWITCH
 upgrade_switch $TRUNKSWITCH
 upgrade_switch $OPTSWITCH
-
-RUNNAME=$DATE-$(switch-hash $SWITCH)-$(switch-hash $REFSWITCH)
-
-LOGDIR=$BASELOGDIR/$RUNNAME
-mv $LOGDIR_TMP $LOGDIR
 
 opamjson2html $LOGDIR/$REFSWITCH.json* $LOGDIR/$SWITCH.json* $LOGDIR/$TRUNKSWITCH.json* $LOGDIR/$OPTSWITCH.json* >$LOGDIR/build.html
 
@@ -115,7 +111,7 @@ BENCH_TIME=$(($(date +%s) - BENCH_START_TIME))
 cd $BASELOGDIR
 rm -rf latest
 mkdir latest
-echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=../'"$RUNNAME"'/" /></head></html>' >latest/index.html
+echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=../'"$DATE"'/" /></head></html>' >latest/index.html
 
 cat > $LOGDIR/index.html <<EOF
 <html>
@@ -126,23 +122,30 @@ cat > $LOGDIR/index.html <<EOF
 <ul>
 EOF
 
+ocaml-params() {
+    SWITCH=$1; shift
+    [ $# -eq 0 ]
+    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/ with \1/p'
+}
+
 mklog() {
     BASE=$1; shift
     TEST=$1; shift
-    FILE=$1; shift
     [ $# -eq 0 ]
-    NOTE=$(opam config env --switch $TEST | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/ with \1/p')
+    HASH_BASE=$(switch-hash $BASE)
+    HASH_TEST=$(switch-hash $TEST)
+    FILE="${TEST%+bench}@${HASH_TEST}_${BASE%+bench}@${HASH_BASE}.html"
     bench2html \
-        "$DATE ${TEST%+bench}@$(switch-hash $TEST)$NOTE versus ${BASE%+bench}@$(switch-hash $BASE)" \
+        "$DATE ${TEST%+bench}@${HASH_TEST}$(ocaml-params $TEST) versus ${BASE%+bench}@${HASH_BASE}$(ocaml-params $BASE)" \
         $BASE $TEST >$LOGDIR/$FILE
-    echo "<li><a href="$FILE">${TEST%+bench} vs ${BASE%+bench}$NOTE</a></li>" >> $LOGDIR/index.html
+    echo "<li><a href="$FILE">${TEST%+bench} vs ${BASE%+bench}</a></li>" >> $LOGDIR/index.html
 }
 
-mklog $TRUNKSWITCH $SWITCH flambda_trunk.html
-mklog $TRUNKSWITCH $OPTSWITCH flambdopt_trunk.html
-mklog $REFSWITCH $SWITCH flambda_base.html
-mklog $REFSWITCH $OPTSWITCH flambdopt_base.html
-mklog $REFSWITCH $TRUNKSWITCH trunk_base.html
+mklog $TRUNKSWITCH $SWITCH
+mklog $TRUNKSWITCH $OPTSWITCH
+mklog $REFSWITCH $SWITCH
+mklog $REFSWITCH $OPTSWITCH
+mklog $REFSWITCH $TRUNKSWITCH
 
 hours() {
     printf "%02d:%02d:%02d" $(($1 / 3600)) $(($1 / 60 % 60)) $(($1 % 60))
