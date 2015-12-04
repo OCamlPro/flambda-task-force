@@ -19,6 +19,7 @@ let ignored_topics = Topic.([
   Topic (Gc.Free_blocks, Gc);
   Topic (Gc.Largest_free, Gc);
   Topic (Gc.Fragments, Gc);
+  Topic (Size.Full, Size);
 ])
 
 let score topic ~result ~comparison =
