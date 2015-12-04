@@ -106,6 +106,8 @@ mkdir latest
 echo $FLAMBDA_GIT_HASH >latest/ref
 echo '<!DOCTYPE html><html><head><title>Flambda latest logs redirect</title><meta http-equiv="refresh" content="0; url=../'"$LOGDIR"'/" /></head></html>' >latest/index.html
 
+echo "<html><head><title>bench index</title></head><body><ul>$(ls -d 201* latest | sed 's%\(.*\)%<li><a href="\1">\1</a></li>%')</ul></body></html>" >index.html
+
 echo "Done. All logs in $PWD/$LOGDIR"
 ENDTIME=$(date +%s)
 echo "Ran in $(((ENDTIME - STARTTIME) / 60)) minutes"

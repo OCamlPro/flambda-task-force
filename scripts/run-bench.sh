@@ -160,4 +160,6 @@ cat >> $LOGDIR/index.html <<EOF
 </html>
 EOF
 
+cd $BASELOGDIR && echo "<html><head><title>bench index</title></head><body><ul>$(ls -d 201* latest | sed 's%\(.*\)%<li><a href="\1">\1</a></li>%')</ul></body></html>" >index.html
+
 echo "Done"
