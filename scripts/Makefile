@@ -16,5 +16,8 @@ clean:
 bench2html: bench2html.ml
 	ocamlfind ocamlopt -package cow,cow.syntax,operf-macro -linkpkg -syntax camlp4o $^ -o $@
 
+benchwww: benchwww.ml
+	ocamlfind ocamlopt -package cow,cow.syntax,lwt,cohttp.lwt,operf-macro -linkpkg -syntax camlp4o $^ -o $@
+
 opamjson2html: opamjson2html.ml
 	ocamlfind ocamlopt -package yojson,re -linkpkg $< -o $@

@@ -125,7 +125,7 @@ EOF
 ocaml-params() {
     SWITCH=$1; shift
     [ $# -eq 0 ]
-    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/ with \1/p'
+    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p'
 }
 
 mklog() {
@@ -134,9 +134,15 @@ mklog() {
     [ $# -eq 0 ]
     HASH_BASE=$(switch-hash $BASE)
     HASH_TEST=$(switch-hash $TEST)
+    PARAMS_BASE=$(ocaml-params $BASE)
+    PARAMS_TEST=$(ocaml-params $TEST)
+    echo $HASH_BASE >$LOGDIR/${BASE%+bench}.hash
+    echo $HASH_TEST >$LOGDIR/${HASH%+bench}.hash
+    echo $PARAMS_BASE >$LOGDIR/${BASE%+bench}.params
+    echo $PARAMS_TEST >$LOGDIR/${HASH%+bench}.params
     FILE="${TEST%+bench}@${HASH_TEST}_${BASE%+bench}@${HASH_BASE}.html"
     bench2html \
-        "$DATE ${TEST%+bench}@${HASH_TEST}$(ocaml-params $TEST) versus ${BASE%+bench}@${HASH_BASE}$(ocaml-params $BASE)" \
+        "$DATE ${TEST%+bench}@${HASH_TEST}$PARAMS_TEST versus ${BASE%+bench}@${HASH_BASE}$PARAMS_BASE" \
         $BASE $TEST >$LOGDIR/$FILE
     echo "<li><a href="$FILE">${TEST%+bench} vs ${BASE%+bench}</a></li>" >> $LOGDIR/index.html
 }
