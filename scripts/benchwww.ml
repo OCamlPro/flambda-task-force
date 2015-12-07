@@ -41,24 +41,28 @@ let average_score topic scores = match topic with
     float (List.length scores)
 
 let scorebar_style topic score =
-  let leftpercent, rightpercent = match topic with
-    | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
-      if score < 1. then 50., 100. -. 50. *. score
-      else 100. -. 50. *. score, 50.
-    | _ ->
-      if score < 1. then 50., 100. -. 50. *. score
-      else 50. /. score, 50.
+  let gradient =
+    if score < 1. then
+      let pct = 100. *. score in
+      [
+        "transparent", 0.;
+        "transparent", pct;
+        "#55ff88", pct;
+        "#55ff88", 100.;
+      ]
+    else
+      let pct = match topic with
+        | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
+          100. *. (score -. 1.)
+        | _ -> 100. *. (1. -. 1. /. score)
+      in
+      [
+        "#ff5555", 0.;
+        "#ff5555", pct;
+        "transparent", pct;
+        "transparent", 100.;
+      ]
   in
-  let gradient = [
-    "transparent", 0.;
-    "transparent", leftpercent;
-    "#ff5555", leftpercent;
-    "#ff5555", 50.;
-    "#55ff88", 50.;
-    "#55ff88", rightpercent;
-    "transparent", rightpercent;
-    "transparent", 100.;
-  ] in
   Printf.sprintf "background:linear-gradient(to right,%s);border:1px solid %s"
     (String.concat "," (List.map (fun (c,p) -> Printf.sprintf "%s %.0f%%" c p) gradient))
     (if score <= 1. then "#33bb66" else "#bb4444")
@@ -291,7 +295,9 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                 with Not_found ->
                   let k = logkey ~dir:result_dir ~switch:result_switch ~bench in
                   if SMap.mem k logs then
-                    <:html<$html$<td class="error"><a href="$str:"#"^k$">fail</a></td>&>>
+                    <:html<$html$<td class="scorebar-small error">
+                             <a href="$str:"#"^k$">failed</a>
+                           </td>&>>
                   else
                     <:html<$html$<td>-</td>&>>)
               topics <:html<&>>
@@ -364,8 +370,11 @@ let css = "
     tr.bench-topic {
       background: #cce;
     }
-    .error {
-      background-color: #dd6666;
+    .error.scorebar, .error.scorebar-small {
+      border: 1px solid orange;
+    }
+    .error, .error a {
+      color: orangered;
     }
 
     div {
@@ -456,7 +465,7 @@ let gen_full_page comp result =
   let res_params = sw_params result in
   let title =
     Printf.sprintf "Comparing %s@%s with %s@%s (at %s)"
-      (sw_printname result) res_hash (sw_printname comp) cmp_hash
+      (sw_name result) res_hash (sw_name comp) cmp_hash
       (if fst comp = fst result then Filename.basename (fst comp)
        else Printf.sprintf "%s and %s"
            (Filename.basename (fst result))
