@@ -596,8 +596,13 @@ let index basedir =
         in
         let switches = Html.concat (List.rev switches) in
         let build_link = Filename.basename dir ^"/build.html" in
+        let timings =
+          try Util.File.string_of_file (Filename.concat dir "timings")
+          with _ -> ""
+        in
         <:html<<tr>
-          <th><a href="$str:build_link$">$str:name$</a></th>
+          <th><a href="$str:build_link$" title="$str:timings$">$str:name$</a>
+          </th>
           $switches$
         </tr>&>>)
       switch_details
