@@ -2,7 +2,7 @@ open Cow
 open Macroperf
 
 let short_switch_name sw =
-  try String.sub sw 0 (String.index sw '@') with Not_found -> sw
+  Filename.chop_suffix sw "+bench"
 
 let ( @* ) g f x = g (f x)
 
@@ -15,7 +15,6 @@ let ignored_topics = Topic.([
   Topic (Gc.Free_blocks, Gc);
   Topic (Gc.Largest_free, Gc);
   Topic (Gc.Fragments, Gc);
-  Topic (Size.Full, Size);
 ])
 
 let score topic ~result ~comparison =
@@ -45,7 +44,7 @@ let scorebar_style topic score =
   let leftpercent, rightpercent = match topic with
     | Topic.Topic (gc, Topic.Gc) when gc = Topic.Gc.Promoted_words ->
       if score < 1. then 50., 100. -. 50. *. score
-      else 100. -. 50. *. score -. 1., 50.
+      else 100. -. 50. *. score, 50.
     | _ ->
       if score < 1. then 50., 100. -. 50. *. score
       else 50. /. score, 50.
@@ -111,26 +110,52 @@ let get_bench_error macrodir switch bench =
   | Some ex -> Execution.(ex.stdout, ex.stderr)
   | None -> raise Not_found
 
-let collect macrodir comparison_switch result_switch =
-  let bench_dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true macrodir)) in
+let collect_dir dir =
+  let bench_dirs =
+    Util.FS.(List.filter is_dir_exn (ls ~prefix:true dir))
+  in
   (* Refresh summary files, which may be needed sometimes *)
   SSet.iter Summary.summarize_dir (SSet.of_list bench_dirs);
-  let data_by_bench =
-    List.fold_left (fun acc dir -> DB.of_dir ~acc dir) DB.empty bench_dirs
+  List.fold_left (fun acc dir -> DB.of_dir ~acc dir) DB.empty bench_dirs
+
+let by_topic data =
+  DB.fold_data
+    (fun bench context_id topic -> DB2.add topic bench context_id)
+    data DB2.empty
+
+let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
+  let result_data_by_bench = collect_dir result_dir in
+  let result_data_by_topic = by_topic result_data_by_bench in
+  let comparison_data_by_bench, comparison_data_by_topic =
+    if comparison_dir = result_dir then
+      result_data_by_bench, result_data_by_topic
+    else
+      let by_bench = collect_dir comparison_dir in
+      by_bench, by_topic by_bench
   in
-  let data_by_topic =
-    DB.fold_data
-      (fun bench context_id topic -> DB2.add topic bench context_id)
-      data_by_bench DB2.empty
+  let ignored_topics =
+    let code_sz = Topic.(Topic (Size.Code, Size)) in
+    if TMap.mem code_sz result_data_by_topic &&
+       TMap.mem code_sz comparison_data_by_topic
+    then Topic.(Topic (Size.Full, Size)) :: ignored_topics
+    else code_sz :: Topic.(Topic (Size.Data, Size)) :: ignored_topics
   in
-  let logkey ~switch ~bench = "log-" ^ switch ^"-"^ bench in
+  let logkey ~dir ~switch ~bench =
+    Printf.sprintf "log-%s-%s-%s" (Filename.basename dir) switch bench
+  in
   let logs, avgscores, table_contents =
     TMap.fold (fun topic m (logs,avgscores,html) ->
         if List.mem topic ignored_topics then logs,avgscores,html else
         let bench_all, logs, bench_html =
           SMap.fold (fun bench m (acc,logs,html) ->
               let open Summary.Aggr in
-              let comparison = try Some (SMap.find comparison_switch m) with Not_found -> None in
+              let comparison =
+                try Some (
+                    TMap.find topic comparison_data_by_topic
+                    |> SMap.find bench
+                    |> SMap.find comparison_switch)
+                with Not_found -> None
+              in
               let result = try Some (SMap.find result_switch m) with Not_found -> None in
               let acc, scorebar =
                 match comparison, result with
@@ -146,22 +171,28 @@ let collect macrodir comparison_switch result_switch =
                 | _ ->
                   acc, <:html<<td>ERR</td>&>>
               in
-              let td logs swname = function
+              let td logs swdir swname = function
                 | Some ({success = true; _} as r) ->
                   let tooltip = Printf.sprintf "%d runs, stddev %s" r.runs (print_float r.stddev) in
                   logs,
                   <:html<<td title="$str:tooltip$">$str:print_float r.mean$</td>&>>
                 | Some ({success = false; _}) ->
-                  let k = logkey ~switch:swname ~bench in
+                  let k = logkey ~dir:swdir ~switch:swname ~bench in
                   (if SMap.mem k logs then logs
-                   else try SMap.add k (get_bench_error macrodir swname bench) logs with _ -> logs),
-                  <:html<<td class="error"><a href="$str:"#"^k$">ERR(run)</a></td>&>>
+                   else
+                     try SMap.add k (get_bench_error swdir swname bench) logs
+                     with _ -> logs),
+                  <:html<<td class="error"><a href="$str:"#"^k$">failed</a></td>&>>
                 | None ->
                   logs,
                   <:html<<td>-</td>&>>
               in
-              let logs, td_result = td logs result_switch result in
-              let logs, td_compar = td logs comparison_switch comparison in
+              let logs, td_result =
+                td logs result_dir result_switch result
+              in
+              let logs, td_compar =
+                td logs comparison_dir comparison_switch comparison
+              in
               acc,
               logs,
               <:html<$html$
@@ -183,15 +214,22 @@ let collect macrodir comparison_switch result_switch =
                  <td></td>
                </tr>
                $bench_html$>>)
-      data_by_topic (SMap.empty, TMap.empty, <:html<&>>)
+      result_data_by_topic (SMap.empty, TMap.empty, <:html<&>>)
+  in
+  let name_result, name_comp =
+    if result_switch = comparison_switch then
+      Filename.basename result_dir ^" "^ result_switch,
+      Filename.basename comparison_dir ^" "^ comparison_switch
+    else
+      result_switch, comparison_switch
   in
   let table = <:html<
     <table>
        <thead><tr>
          <th>Benchmark</th>
          <th>Relative score</th>
-         <th>$str:short_switch_name result_switch$</th>
-         <th>$str:short_switch_name comparison_switch$</th>
+         <th>$str:short_switch_name name_result$</th>
+         <th>$str:short_switch_name name_comp$</th>
        </tr></thead>
        <tbody>
          $table_contents$
@@ -200,7 +238,7 @@ let collect macrodir comparison_switch result_switch =
   >> in
   let summary_table =
     let topics =
-      TSet.of_list (List.map fst (TMap.bindings data_by_topic))
+      TSet.of_list (List.map fst (TMap.bindings result_data_by_topic))
     in
     let topics =
       List.fold_left (fun acc t -> TSet.remove t acc) topics ignored_topics
@@ -230,7 +268,8 @@ let collect macrodir comparison_switch result_switch =
     let contents =
       SMap.fold (fun bench ctx_map html ->
           let comparison_map =
-            try (SMap.find comparison_switch ctx_map).Summary.data
+            try (SMap.find comparison_switch
+                   (SMap.find bench comparison_data_by_bench)).Summary.data
             with Not_found -> TMap.empty
           in
           let result_map =
@@ -250,7 +289,7 @@ let collect macrodir comparison_switch result_switch =
                            $str:print_score score$
                          </td>&>>
                 with Not_found ->
-                  let k = logkey ~switch:result_switch ~bench in
+                  let k = logkey ~dir:result_dir ~switch:result_switch ~bench in
                   if SMap.mem k logs then
                     <:html<$html$<td class="error"><a href="$str:"#"^k$">fail</a></td>&>>
                   else
@@ -259,11 +298,11 @@ let collect macrodir comparison_switch result_switch =
           in
           <:html<$html$
                  <tr>
-                   <th>$str:bench$</th>
+                   <td style="text-align:left;">$str:bench$</td>
                    $topics$
                  </tr>
           >>)
-        data_by_bench <:html<&>>
+        result_data_by_bench <:html<&>>
     in
     <:html< <table>
               <thead>
@@ -278,7 +317,7 @@ let collect macrodir comparison_switch result_switch =
     SMap.fold (fun id (stdout, stderr) html ->
         <:html< $html$
                 <div class="logs" id="$str:id$">
-                  <a class="close" href="#">Close</a>
+                  <a class="close" href="#close">Close</a>
                   <h3>Error running bench $str:id$</h3>
                   <h4>Stdout</h4><pre>$str:stdout$</pre>
                   <h4>Stderr</h4><pre>$str:stderr$</pre>
@@ -361,6 +400,23 @@ let css = "
     a:target {
       background-color: #e0e000;
     }
+    .index td {
+      margin: 3px;
+      padding: 5px;
+    }
+    .index tr {
+      background-color: #eee;
+      border: 1px solid #aaac;
+      border-collapse: collapse;
+    }
+    span.radio {
+      font-size: 80%;
+      padding: 2px;
+      border-top: 2px solid #fff;
+      border-left: 2px solid #fff;
+      border-right: 2px solid #666;
+      border-bottom: 2px solid #666;
+    }
 "
 
 let hashcol hash =
@@ -370,57 +426,68 @@ let hashcol hash =
     |> Printf.sprintf "#%06x"
   else "white"
 
-let gen_full_page macrodir comparison_switch result_switch =
-  let table = collect macrodir comparison_switch result_switch in
-  let sw_name sw = Filename.chop_suffix sw "+bench" in
-  let sw_hash sw =
+let gen_full_page comp result =
+  let table = collect comp result in
+  let sw_name (_,sw) = short_switch_name sw in
+  let sw_printname ((dir,_) as sw) =
+    if comp <> result && snd comp = snd result then
+      let d = Filename.basename dir in
+      (if String.length d > 15 then String.sub d 0 15 else d) ^"/"^
+      sw_name sw
+    else sw_name sw
+  in
+  let sw_hash (swdir, _ as sw) =
     try
       Util.File.string_of_file
-        Filename.(concat macrodir (sw_name sw) ^ ".hash")
+        Filename.(concat swdir (sw_name sw) ^ ".hash")
       |> String.trim
     with _ -> "?"
   in
-  let sw_params sw =
+  let sw_params (swdir, _ as sw) =
     try
       Util.File.string_of_file
-        Filename.(concat macrodir (sw_name sw) ^ ".params")
+        Filename.(concat swdir (sw_name sw) ^ ".params")
       |> String.trim
     with _ -> ""
   in
-  let cmp_hash = sw_hash comparison_switch in
-  let cmp_params = sw_params comparison_switch in
-  let res_hash = sw_hash result_switch in
-  let res_params = sw_params result_switch in
+  let cmp_hash = sw_hash comp in
+  let cmp_params = sw_params comp in
+  let res_hash = sw_hash result in
+  let res_params = sw_params result in
   let title =
-    Printf.sprintf "Comparing %s@%s with %s@%s (%s)"
-      result_switch res_hash comparison_switch cmp_hash
-      (Filename.basename macrodir)
+    Printf.sprintf "Comparing %s@%s with %s@%s (at %s)"
+      (sw_printname result) res_hash (sw_printname comp) cmp_hash
+      (if fst comp = fst result then Filename.basename (fst comp)
+       else Printf.sprintf "%s and %s"
+           (Filename.basename (fst result))
+           (Filename.basename (fst comp)))
   in
   let cmp_hashstyle =
     Printf.sprintf
-      "background-color:%s;font-size:130%;font-family:monospace"
+      "background-color:%s;font-size:130%%;font-family:monospace"
       (hashcol cmp_hash)
   in
   let res_hashstyle =
     Printf.sprintf
-      "background-color:%s;font-size:130%;font-family:monospace"
+      "background-color:%s;font-size:130%%;font-family:monospace"
       (hashcol res_hash)
   in
   <:html<
     <html>
       <head>
         <title>Operf-macro, $str:title$</title>
-        <style type="text/css">$str:css$</style>
+        <style type="text/css">$str:css$
+        </style>
       </head>
       <body>
         <h1>Operf-macro comparison</h1>
         <table>
           <tr><th>Comparing</th>
-              <td>$str:sw_name result_switch$</td>
+              <td>$str:sw_printname result$</td>
               <td style="$str:res_hashstyle$">$str:res_hash$</td>
               <td style="text-align:left;font-family:monospace">$str:res_params$</td></tr>
           <tr><th>Against</th>
-              <td>$str:sw_name comparison_switch$</td>
+              <td>$str:sw_printname comp$</td>
               <td style="$str:cmp_hashstyle$">$str:cmp_hash$</td>
               <td style="text-align:left;font-family:monospace">$str:cmp_params$</td></tr>
         </table>
@@ -464,7 +531,7 @@ let index basedir =
                 try
                   String.trim @@
                   Util.File.string_of_file
-                    Filename.(concat d @@ chop_suffix swname "+bench" ^ ".hash")
+                    Filename.(concat d @@ short_switch_name swname ^ ".hash")
                 with _ -> "XXX"
               in
               SMap.add swname (if hash = "" then "XXX" else hash) acc
@@ -477,7 +544,7 @@ let index basedir =
   let thead =
     let sws =
       SSet.fold (fun s acc ->
-          <:html<<th>$str:s$</th>&>> :: acc
+          <:html<<th>$str:short_switch_name s$</th>&>> :: acc
         )
         all_switches []
       |> List.rev
@@ -503,10 +570,10 @@ let index basedir =
                 <:html<
                   <td>
                     <span style="$str:hash_style$">$str:hash$</span>
-                    <small>
-                      [<input type="radio" name="test" value="$str:value$"/>Test |
-                       <input type="radio" name="reference" value="$str:value$"/>Ref]
-                    </small>
+                    <span class="radio">
+                      <input type="radio" name="test" value="$str:value$"/>Test |
+                      <input type="radio" name="reference" value="$str:value$"/>Ref
+                    </span>
                   </td>&>>
                 ::acc
               with Not_found ->
@@ -539,7 +606,7 @@ let index basedir =
           <div style="position:fixed; top: 20px; right: 20px;">
              <input type="submit" value="Compare"/>
           </div>
-          <table>
+          <table class="index">
             $thead$
             <tbody>$lines$</tbody>
           </table>
@@ -563,15 +630,14 @@ let serve basedir uri path args = match path with
     (try
        let dirref, swref = split '/' (List.assoc "reference" args) in
        let dirtes, swtes = split '/' (List.assoc "test" args) in
-       if dirref <> dirtes then
-         Server.respond_error ~body:"Comparison accross runs unsupported yet" ()
-       else
-         let page =
-           gen_full_page (Filename.concat basedir dirref) swref swtes
-         in
-         Server.respond_string
-           ~status:`OK
-           ~body:(Html.to_string page) ()
+       let page =
+         gen_full_page
+           (Filename.concat basedir dirref, swref)
+           (Filename.concat basedir dirtes, swtes)
+       in
+       Server.respond_string
+         ~status:`OK
+         ~body:(Html.to_string page) ()
      with Not_found ->
        let body =
          List.fold_left (fun acc (arg,value) ->
@@ -582,10 +648,12 @@ let serve basedir uri path args = match path with
        Server.respond_error ~body ())
   | f when Util.FS.is_file (Filename.concat basedir f) = Some true ->
     Server.respond_file ~fname:(Server.resolve_local_file ~docroot:basedir ~uri) ()
-  | _ ->
+  | "/" ->
     Server.respond_string
       ~status:`OK
       ~body:(Html.to_string (index basedir)) ()
+  | _ ->
+    Server.respond_error ~status:`Not_found ~body:"Page not found" ()
 
 let method_filter meth (res,body) = match meth with
   | `HEAD -> return (res,`Empty)

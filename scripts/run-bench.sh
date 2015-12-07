@@ -14,6 +14,7 @@ SWITCH=flambda+bench
 REFSWITCH=comparison+bench
 TRUNKSWITCH=trunk+bench
 OPTSWITCH=flambda-opt+bench
+CLASSICSWITCH=flambda-classic+bench
 
 STARTTIME=$(date +%s)
 
@@ -56,8 +57,9 @@ upgrade_switch $REFSWITCH
 upgrade_switch $SWITCH
 upgrade_switch $TRUNKSWITCH
 upgrade_switch $OPTSWITCH
+upgrade_switch $CLASSICSWITCH
 
-opamjson2html $LOGDIR/$REFSWITCH.json* $LOGDIR/$SWITCH.json* $LOGDIR/$TRUNKSWITCH.json* $LOGDIR/$OPTSWITCH.json* >$LOGDIR/build.html
+opamjson2html $LOGDIR/$REFSWITCH.json* $LOGDIR/$SWITCH.json* $LOGDIR/$TRUNKSWITCH.json* $LOGDIR/$OPTSWITCH.json* $LOGDIR/$CLASSICSWITCH.json* >$LOGDIR/build.html
 
 UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 
@@ -90,6 +92,7 @@ rm -f $OPERFDIR/*/$SWITCH.*
 rm -f $OPERFDIR/*/$REFSWITCH.*
 rm -f $OPERFDIR/*/$TRUNKSWITCH.*
 rm -f $OPERFDIR/*/$OPTSWITCH.*
+rm -f $OPERFDIR/*/$CLASSICSWITCH.*
 
 wall " -- STARTING BENCHES -- don't put load on the machine. Thanks"
 
@@ -101,6 +104,7 @@ nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $
 nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $REFSWITCH
 nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $TRUNKSWITCH
 nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $OPTSWITCH
+nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $CLASSICSWITCH
 
 mkdir -p $LOGDIR
 cp -r $OPERFDIR/* $LOGDIR
@@ -137,9 +141,9 @@ mklog() {
     PARAMS_BASE=$(ocaml-params $BASE)
     PARAMS_TEST=$(ocaml-params $TEST)
     echo $HASH_BASE >$LOGDIR/${BASE%+bench}.hash
-    echo $HASH_TEST >$LOGDIR/${HASH%+bench}.hash
+    echo $HASH_TEST >$LOGDIR/${TEST%+bench}.hash
     echo $PARAMS_BASE >$LOGDIR/${BASE%+bench}.params
-    echo $PARAMS_TEST >$LOGDIR/${HASH%+bench}.params
+    echo $PARAMS_TEST >$LOGDIR/${TEST%+bench}.params
     FILE="${TEST%+bench}@${HASH_TEST}_${BASE%+bench}@${HASH_BASE}.html"
     bench2html \
         "$DATE ${TEST%+bench}@${HASH_TEST}$PARAMS_TEST versus ${BASE%+bench}@${HASH_BASE}$PARAMS_BASE" \
@@ -152,6 +156,7 @@ mklog $TRUNKSWITCH $OPTSWITCH
 mklog $REFSWITCH $SWITCH
 mklog $REFSWITCH $OPTSWITCH
 mklog $REFSWITCH $TRUNKSWITCH
+mklog $REFSWITCH $CLASSICSWITCH
 
 hours() {
     printf "%02d:%02d:%02d" $(($1 / 3600)) $(($1 / 60 % 60)) $(($1 % 60))
