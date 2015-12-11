@@ -47,7 +47,7 @@ upgrade_switch() {
 for SWITCH in "${SWITCHES[@]}"; do upgrade_switch $SWITCH; done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
-opamjson2html "${LOGSWITCHES[@]/%/.json*}" >$LOGDIR/build.html
+opamjson2html ${LOGSWITCHES[@]/%/.json*} >$LOGDIR/build.html
 
 UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 
@@ -91,9 +91,9 @@ for SWITCH in "${SWITCHES[@]}"; do
     nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $SWITCH
 done
 
+opam config exec --switch $OPERF_SWITCH -- operf-macro summarize -b csv >$LOGDIR/summary.csv
 mkdir -p $LOGDIR
 cp -r $OPERFDIR/* $LOGDIR
-opam config exec --switch $OPERF_SWITCH -- operf-macro summarize -b csv >$LOGDIR/summary.csv
 
 BENCH_TIME=$(($(date +%s) - BENCH_START_TIME))
 
@@ -120,8 +120,8 @@ Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
 cd $BASELOGDIR && tar -u $DATE/{*/*.summary,build.html,*.hash,*.params,timings,summary.csv} -f results.tar
-gzip -c --rsyncable results.tar >results.tar.gz
-
+gzip -c --rsyncable results.tar >results.tar.gz.2
+mv results.tar.gz.2 results.tar.gz
 
 # Static logs (should not be needed anymore, but in case)
 (cat <<EOF
@@ -135,11 +135,11 @@ EOF
 for SWITCH in "${SWITCHES[@]}"; do
     if [ "$SWITCH" = "comparison+bench" ]; then continue; fi
     HASH=$(cat $LOGDIR/${SWITCH%+bench}.hash)
-    FILE="${SWITCH%+bench}@$HASH"
+    FILE="${SWITCH%+bench}@$HASH.html"
     bench2html \
         "$DATE ${SWITCH%+bench}@${HASH}" \
         comparison+bench $SWITCH >$LOGDIR/$FILE
-    echo "<li><a href="$FILE">${SWITCH%+bench}</a></li>"
+    echo "<li><a href=\"$FILE\">${SWITCH%+bench}</a></li>"
 done
 cat <<EOF
 </ul>
