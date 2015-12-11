@@ -102,7 +102,10 @@ let topic_unit = function
     " (relative to minor words)"
   | _ -> ""
 
-let get_bench_error macrodir switch bench =
+let get_bench_error error macrodir switch bench =
+  match error with
+  | Some (stdout, stderr) -> stdout, stderr
+  | None -> (* Older data, without err message: get from the result file if any *)
   let res = Result.load_conv_exn Util.FS.(macrodir / bench / switch ^ ".result") in
   match
     List.fold_left (fun acc -> function
@@ -180,11 +183,17 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                   let tooltip = Printf.sprintf "%d runs, stddev %s" r.runs (print_float r.stddev) in
                   logs,
                   <:html<<td title="$str:tooltip$">$str:print_float r.mean$</td>&>>
-                | Some ({success = false; _}) ->
+                | Some ({success = false}) ->
                   let k = logkey ~dir:swdir ~switch:swname ~bench in
                   (if SMap.mem k logs then logs
                    else
-                     try SMap.add k (get_bench_error swdir swname bench) logs
+                     let error =
+                       try
+                         let idmap = SMap.find bench result_data_by_bench in
+                         (SMap.find swname idmap).Summary.error
+                       with Not_found -> None
+                     in
+                     try SMap.add k (get_bench_error error swdir swname bench) logs
                      with _ -> logs),
                   <:html<<td class="error"><a href="$str:"#"^k$">failed</a></td>&>>
                 | None ->
@@ -519,13 +528,14 @@ let index basedir =
     List.fold_left (fun acc d ->
         let switches =
           Util.FS.fold_files (fun switches f ->
-              if Filename.check_suffix f ".result" then
+              if Filename.check_suffix f ".summary" then
                 SSet.add Filename.(basename (chop_extension f)) switches
               else switches)
             SSet.empty
             d
         in
-        (d, switches) :: acc)
+        if SSet.is_empty switches then acc
+        else (d, switches) :: acc)
       [] dirs
   in
   let all_switches =
