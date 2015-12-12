@@ -193,7 +193,11 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                          (SMap.find swname idmap).Summary.error
                        with Not_found -> None
                      in
-                     try SMap.add k (get_bench_error error swdir swname bench) logs
+                     let stdout, stderr = get_bench_error error swdir swname bench in
+                     let name =
+                       Printf.sprintf "%s on %s (%s)" bench swname (Filename.basename swdir)
+                     in
+                     try SMap.add k (name,stdout,stderr) logs
                      with _ -> logs),
                   <:html<<td class="error"><a href="$str:"#"^k$">failed</a></td>&>>
                 | None ->
@@ -329,11 +333,11 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
     >>
   in
   let html_logs =
-    SMap.fold (fun id (stdout, stderr) html ->
+    SMap.fold (fun id (name, stdout, stderr) html ->
         <:html< $html$
                 <div class="logs" id="$str:id$">
                   <a class="close" href="#close">Close</a>
-                  <h3>Error running bench $str:id$</h3>
+                  <h3>Error running bench $str:name$</h3>
                   <h4>Stdout</h4><pre>$str:stdout$</pre>
                   <h4>Stderr</h4><pre>$str:stderr$</pre>
                 </div>&>>)
@@ -510,7 +514,7 @@ let gen_full_page comp result =
               <td style="text-align:left;font-family:monospace">$str:cmp_params$</td></tr>
         </table>
         <p>For all the measures below, smaller is better</p>
-        <p>Promoted words are measured as a ratio or minor words,
+        <p>Promoted words are measured as a ratio of minor words,
            and compared linearly with the reference</p>
         $table$
       </body>
