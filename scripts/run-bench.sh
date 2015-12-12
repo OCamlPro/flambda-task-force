@@ -10,7 +10,7 @@ unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
 
 OPERF_SWITCH=4.02.1
 
-SWITCHES=(flambda+bench comparison+bench trunk+bench flambda-opt+bench flambda-classic+bench)
+SWITCHES=(comparison+bench flambda+bench flambda-classic+bench flambda-opt+bench trunk+bench)
 
 STARTTIME=$(date +%s)
 
@@ -92,7 +92,6 @@ for SWITCH in "${SWITCHES[@]}"; do
 done
 
 opam config exec --switch $OPERF_SWITCH -- operf-macro summarize -b csv >$LOGDIR/summary.csv
-mkdir -p $LOGDIR
 cp -r $OPERFDIR/* $LOGDIR
 
 BENCH_TIME=$(($(date +%s) - BENCH_START_TIME))
