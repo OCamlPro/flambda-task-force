@@ -22,11 +22,24 @@ LOGDIR=$BASELOGDIR/$DATE
 
 OPERFDIR=~/.cache/operf/macro/
 
+add-to-archive() {
+    local FILES=$(cd $LOGDIR && for x in $*; do echo $DATE/$x; done)
+    tar -u $FILES -f $BASELOGDIR/results.tar -C $BASELOGDIR
+    gzip -c --rsyncable $BASELOGDIR/results.tar >$BASELOGDIR/results.tar.gz
+    rsync $BASELOGDIR/results.tar.gz flambda-mirror:
+    ssh flambda-mirror  "tar xz --keep-newer-files -f ~/results.tar.gz -C /var/www/flambda.ocamlpro.com/bench/ 2>/dev/null"
+}
+
 mkdir -p $LOGDIR
 
 echo "Output and log written into $LOGDIR" >&2
 
 exec >$LOGDIR/log 2>&1
+
+echo "=== UPGRADING operf-macro at $DATE ==="
+
+touch $LOGDIR/stamp
+add-to-archive stamp
 
 opam update
 
@@ -52,6 +65,7 @@ opamjson2html ${LOGSWITCHES[@]/%/.json*} >$LOGDIR/build.html
 UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 
 echo -e "\n===== OPAM UPGRADE DONE in ${UPGRADE_TIME}s =====\n"
+
 
 eval $(opam config env --switch $SWITCH)
 
@@ -80,6 +94,20 @@ for SWITCH in "${SWITCHES[@]}"; do
     rm -f $OPERFDIR/*/$SWITCH.*
 done
 
+ocaml-params() {
+    SWITCH=$1; shift
+    [ $# -eq 0 ]
+    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p'
+}
+
+for SWITCH in "${SWITCHES[@]}"; do
+    opam show ocaml --switch $SWITCH --field pinned | sed 's/.*(\(.*\))/\1/' >$LOGDIR/${SWITCH%+bench}.hash
+    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p' >$LOGDIR/${SWITCH%+bench}.params
+    opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
+done
+
+add-to-archive log build.html "*.hash" "*.params" "*.pinned"
+
 wall " -- STARTING BENCHES -- don't put load on the machine. Thanks"
 
 BENCH_START_TIME=$(date +%s)
@@ -96,18 +124,6 @@ cp -r $OPERFDIR/* $LOGDIR
 
 BENCH_TIME=$(($(date +%s) - BENCH_START_TIME))
 
-ocaml-params() {
-    SWITCH=$1; shift
-    [ $# -eq 0 ]
-    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p'
-}
-
-for SWITCH in "${SWITCHES[@]}"; do
-    opam show ocaml --switch $SWITCH --field pinned | sed 's/.*(\(.*\))/\1/' >$LOGDIR/${SWITCH%+bench}.hash
-    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p' >$LOGDIR/${SWITCH%+bench}.params
-    opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
-done
-
 hours() {
     printf "%02d:%02d:%02d" $(($1 / 3600)) $(($1 / 60 % 60)) $(($1 % 60))
 }
@@ -118,9 +134,7 @@ Benches: $(hours $BENCH_TIME)
 Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
-cd $BASELOGDIR && tar -u $DATE/{*/*.summary,build.html,*.hash,*.params,timings,summary.csv} -f results.tar
-gzip -c --rsyncable results.tar >results.tar.gz.2
-mv results.tar.gz.2 results.tar.gz
+add-to-archive log timings summary.csv "*/*.summary"
 
 # Static logs (should not be needed anymore, but in case)
 (cat <<EOF

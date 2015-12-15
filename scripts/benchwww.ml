@@ -315,12 +315,15 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                     <:html<$html$<td>-</td>&>>)
               topics <:html<&>>
           in
-          <:html<$html$
-                 <tr>
-                   <td style="text-align:left;">$str:bench$</td>
-                   $topics$
-                 </tr>
-          >>)
+          let bname =
+            if String.length bench <= 40 then
+              <:html<<td style="text-align:left;">$str:bench$</td>&>>
+            else
+              <:html<<td style="text-align:left;" title="$str:bench$">
+                       $str:String.sub bench 0 40$
+                     </td>&>>
+          in
+          <:html<$html$<tr>$bname$$topics$</tr>&>>)
         result_data_by_bench <:html<&>>
     in
     <:html< <table>
@@ -443,10 +446,17 @@ let css = "
 
 let hashcol hash =
   if String.length hash >= 6 then
-    int_of_string ("0x"^String.sub hash 0 6)
-    lor 0x808080
-    |> Printf.sprintf "#%06x"
+    try
+      int_of_string ("0x"^String.sub hash 0 6)
+      lor 0x808080
+      |> Printf.sprintf "#%06x"
+    with Failure _ -> "white"
   else "white"
+
+let hashstyle hash =
+  Printf.sprintf
+    "background-color:%s;font-size:130%%;font-family:monospace"
+    (hashcol hash)
 
 let gen_full_page comp result =
   let table = collect comp result in
@@ -484,16 +494,6 @@ let gen_full_page comp result =
            (Filename.basename (fst result))
            (Filename.basename (fst comp)))
   in
-  let cmp_hashstyle =
-    Printf.sprintf
-      "background-color:%s;font-size:130%%;font-family:monospace"
-      (hashcol cmp_hash)
-  in
-  let res_hashstyle =
-    Printf.sprintf
-      "background-color:%s;font-size:130%%;font-family:monospace"
-      (hashcol res_hash)
-  in
   <:html<
     <html>
       <head>
@@ -506,11 +506,11 @@ let gen_full_page comp result =
         <table>
           <tr><th>Comparing</th>
               <td>$str:sw_printname result$</td>
-              <td style="$str:res_hashstyle$">$str:res_hash$</td>
+              <td style="$str:hashstyle res_hash$">$str:res_hash$</td>
               <td style="text-align:left;font-family:monospace">$str:res_params$</td></tr>
           <tr><th>Against</th>
               <td>$str:sw_printname comp$</td>
-              <td style="$str:cmp_hashstyle$">$str:cmp_hash$</td>
+              <td style="$str:hashstyle cmp_hash$">$str:cmp_hash$</td>
               <td style="text-align:left;font-family:monospace">$str:cmp_params$</td></tr>
         </table>
         <p>For all the measures below, smaller is better</p>
@@ -521,12 +521,17 @@ let gen_full_page comp result =
     </html>
   >>
 
+let duration ts =
+  let sec = int_of_float ts in
+  let min, sec = sec / 60, sec mod 60 in
+  let hr, min = min / 60, min mod 60 in
+  if hr > 0 then Printf.sprintf "%d hours, %d minutes" hr min
+  else if min > 0 then Printf.sprintf "%d minutes" min
+  else if sec > 0 then Printf.sprintf "%d seconds" sec
+  else "right now"
+
 let index basedir =
   let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true basedir)) in
-  let dirs =
-    List.filter (fun d -> Sys.file_exists (Filename.concat d "summary.csv"))
-      dirs
-  in
   let dirs = List.sort compare dirs in
   let dirs_switches =
     List.fold_left (fun acc d ->
@@ -538,7 +543,9 @@ let index basedir =
             SSet.empty
             d
         in
-        if SSet.is_empty switches then acc
+        if SSet.is_empty switches &&
+           not (Sys.file_exists (Filename.concat d "stamp"))
+        then acc
         else (d, switches) :: acc)
       [] dirs
   in
@@ -549,19 +556,18 @@ let index basedir =
   let switch_details =
     List.map (fun (d, switches) ->
         let hashes =
-          List.fold_left (fun acc swname ->
+          List.fold_left (fun hashes swname ->
               let hash =
                 try
                   String.trim @@
                   Util.File.string_of_file
                     Filename.(concat d @@ short_switch_name swname ^ ".hash")
-                with _ -> "XXX"
+                with _ -> ""
               in
-              SMap.add swname (if hash = "" then "XXX" else hash) acc
-            )
-            SMap.empty (SSet.elements switches)
+              if hash <> "" then SMap.add swname hash hashes else hashes)
+            SMap.empty (SSet.elements all_switches)
         in
-        d, hashes)
+        d, switches, hashes)
       dirs_switches
   in
   let thead =
@@ -579,48 +585,82 @@ let index basedir =
            </tr></thead>&>>
   in
   let lines =
-    List.map (fun (dir,swmap) ->
+    List.map (fun (dir,switches,hashes) ->
+        let status =
+          if SSet.is_empty switches then
+            try
+              `Running_since
+                (Unix.stat (Filename.concat dir "build.html")).Unix.st_mtime
+            with Unix.Unix_error _ -> try
+              `Building
+                (Unix.stat (Filename.concat dir "stamp")).Unix.st_mtime
+            with Unix.Unix_error _ -> `Building 0.
+          else
+            `Complete
+        in
         let switches =
-          SSet.fold (fun sw acc ->
-              try
-                let hash = SMap.find sw swmap in
-                let value = Filename.basename dir ^"/"^ sw in
-                let hash_style =
-                  Printf.sprintf
-                    "background-color:%s;font-size:130%%;font-family:monospace;"
-                    (hashcol hash)
-                in
-                <:html<
-                  <td>
-                    <span style="$str:hash_style$">$str:hash$</span>
-                    <span class="radio">
+          match status with
+          | `Building since ->
+            [ <:html<<td style="text-align:center" colspan="$int:SSet.cardinal all_switches$">
+                       Building since $str:duration (Unix.time () -. since)$
+              </td>&>> ]
+          | _ ->
+            SSet.fold (fun sw acc ->
+                if status = `Complete &&
+                   not (SSet.mem sw switches) then <:html<<td></td>&>> :: acc
+                else
+                  let hash =
+                    try SMap.find sw hashes with Not_found -> "________"
+                  in
+                  let value = Filename.basename dir ^"/"^ sw in
+                  let inputs =
+                    if status = `Complete then
+                      <:html<
+                      <span class="radio">
                       <input type="radio" name="test" value="$str:value$"/>Test |
                       <input type="radio" name="reference" value="$str:value$"/>Ref
-                    </span>
+                    </span>&>>
+                    else <:html<&>>
+                  in
+                  <:html<
+                  <td style="text-align:left">
+                     <span style="$str:hashstyle hash$">$str:hash$</span>$inputs$
                   </td>&>>
-                ::acc
-              with Not_found ->
-                <:html<<td></td>&>> :: acc
-            )
-            all_switches []
+                  ::acc
+              )
+              all_switches []
         in
         let name = Filename.basename dir in
         let name =
           if String.length name > 15 then String.sub name 0 15 else name
         in
         let switches = Html.concat (List.rev switches) in
-        let build_link = Filename.basename dir ^"/build.html" in
+        let status_line = match status with
+          | `Complete | `Building _ -> <:html<&>>
+          | `Running_since since ->
+            <:html<<tr><th></th>
+                   <td style="text-align:center" colspan="$int:SSet.cardinal all_switches$">
+                       Running since $str:duration (Unix.time () -. since)$
+                   </td></tr>&>>
+        in
         let timings =
           try Util.File.string_of_file (Filename.concat dir "timings")
           with _ -> ""
         in
+        let build_link =
+          if Sys.file_exists (Filename.concat dir "build.html") then
+            let lnk = Filename.basename dir ^"/build.html" in
+            <:html<<a href="$str:lnk$" title="$str:timings$">$str:name$</a>&>>
+          else
+            <:html<<a title="$str:timings$">$str:name$</a>&>>
+        in
         <:html<<tr>
-          <th><a href="$str:build_link$" title="$str:timings$">$str:name$</a>
-          </th>
+          <th>$build_link$</th>
           $switches$
-        </tr>&>>)
+        </tr>
+        $status_line$&>>)
       switch_details
-    |> Html.concat
+      |> Html.concat
   in
   <:html<
     <html>
@@ -675,7 +715,14 @@ let serve basedir uri path args = match path with
        in
        Server.respond_error ~body ())
   | f when Util.FS.is_file (Filename.concat basedir f) = Some true ->
-    Server.respond_file ~fname:(Server.resolve_local_file ~docroot:basedir ~uri) ()
+    let headers =
+      if Filename.check_suffix f ".html" then
+        Cohttp.Header.init_with "content-type" "text/html"
+      else
+        Cohttp.Header.init_with "content-type" "text/plain"
+    in
+    Server.respond_file ~headers
+      ~fname:(Server.resolve_local_file ~docroot:basedir ~uri) ()
   | "/" ->
     Server.respond_string
       ~status:`OK
