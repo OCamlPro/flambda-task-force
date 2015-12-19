@@ -10,7 +10,7 @@ unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
 
 OPERF_SWITCH=4.02.1
 
-SWITCHES=(comparison+bench flambda+bench flambda-classic+bench flambda-opt+bench trunk+bench)
+SWITCHES=(comparison+bench flambda+bench flambda-classic+bench flambda-O2+bench flambda-opt+bench trunk+bench)
 
 STARTTIME=$(date +%s)
 
@@ -22,13 +22,21 @@ LOGDIR=$BASELOGDIR/$DATE
 
 OPERFDIR=~/.cache/operf/macro/
 
-add-to-archive() {
+publish() {
     local FILES=$(cd $LOGDIR && for x in $*; do echo $DATE/$x; done)
-    tar -u $FILES -f $BASELOGDIR/results.tar -C $BASELOGDIR
+    tar -C $BASELOGDIR -u $FILES -f $BASELOGDIR/results.tar
     gzip -c --rsyncable $BASELOGDIR/results.tar >$BASELOGDIR/results.tar.gz
     rsync $BASELOGDIR/results.tar.gz flambda-mirror:
-    ssh flambda-mirror  "tar xz --keep-newer-files -f ~/results.tar.gz -C /var/www/flambda.ocamlpro.com/bench/ 2>/dev/null"
+    ssh flambda-mirror  "tar -C /var/www/flambda.ocamlpro.com/bench/ --keep-newer-files -xzf ~/results.tar.gz 2>/dev/null"
 }
+
+unpublish() {
+    mv $BASELOGDIR/$DATE $BASELOGDIR/broken/
+    tar --delete $DATE -f $BASELOGDIR/results.tar
+    ssh flambda-mirror  "rm -rf /var/www/flambda.ocamlpro.com/bench/$DATE"
+}
+
+trap "unpublish; exit 2" INT
 
 mkdir -p $LOGDIR
 
@@ -39,25 +47,17 @@ exec >$LOGDIR/log 2>&1
 echo "=== UPGRADING operf-macro at $DATE ==="
 
 touch $LOGDIR/stamp
-add-to-archive stamp
+publish stamp
 
 opam update
 
 opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 
-upgrade_switch() {
-    local OPAMSWITCH="$1"; shift
-    [ $# -eq 0 ]
-    export OPAMSWITCH
-    opam update --dev
-    echo
+for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
+for SWITCH in "${SWITCHES[@]}"; do
     echo "=== UPGRADING SWITCH $OPAMSWITCH =="
-    # Requires trunk opam (as of 09-19) to recompile everything properly on
-    # ocaml change!
-    opam upgrade ocaml all-bench --yes --json $LOGDIR/$OPAMSWITCH.json
-}
-
-for SWITCH in "${SWITCHES[@]}"; do upgrade_switch $SWITCH; done
+    opam upgrade ocaml all-bench --yes --switch $SWITCH --json $LOGDIR/$OPAMSWITCH.json
+done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
 opamjson2html ${LOGSWITCHES[@]/%/.json*} >$LOGDIR/build.html
@@ -106,7 +106,7 @@ for SWITCH in "${SWITCHES[@]}"; do
     opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
 done
 
-add-to-archive log build.html "*.hash" "*.params" "*.pinned"
+publish log build.html "*.hash" "*.params" "*.pinned"
 
 wall " -- STARTING BENCHES -- don't put load on the machine. Thanks"
 
@@ -134,7 +134,7 @@ Benches: $(hours $BENCH_TIME)
 Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
-add-to-archive log timings summary.csv "*/*.summary"
+publish log timings summary.csv "*/*.summary"
 
 # Static logs (should not be needed anymore, but in case)
 (cat <<EOF
