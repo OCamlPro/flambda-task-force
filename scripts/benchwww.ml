@@ -193,11 +193,12 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                          (SMap.find swname idmap).Summary.error
                        with Not_found -> None
                      in
-                     let stdout, stderr = get_bench_error error swdir swname bench in
-                     let name =
-                       Printf.sprintf "%s on %s (%s)" bench swname (Filename.basename swdir)
-                     in
-                     try SMap.add k (name,stdout,stderr) logs
+                     try
+                       let stdout, stderr = get_bench_error error swdir swname bench in
+                       let name =
+                         Printf.sprintf "%s on %s (%s)" bench swname (Filename.basename swdir)
+                       in
+                       SMap.add k (name,stdout,stderr) logs
                      with _ -> logs),
                   <:html<<td class="error"><a href="$str:"#"^k$">failed</a></td>&>>
                 | None ->
