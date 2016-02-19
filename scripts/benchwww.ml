@@ -1,8 +1,11 @@
 open Cow
 open Macroperf
 
+(* Only consider switches with a name ending with this suffix *)
+let bench_switch_suffix = "+bench"
+
 let short_switch_name sw =
-  Filename.chop_suffix sw "+bench"
+  Filename.chop_suffix sw bench_switch_suffix
 
 let ( @* ) g f x = g (f x)
 
@@ -538,7 +541,7 @@ let index basedir =
     List.fold_left (fun acc d ->
         let switches =
           Util.FS.fold_files (fun switches f ->
-              if Filename.check_suffix f ".summary" then
+              if Filename.check_suffix f (bench_switch_suffix^".summary") then
                 SSet.add Filename.(basename (chop_extension f)) switches
               else switches)
             SSet.empty
