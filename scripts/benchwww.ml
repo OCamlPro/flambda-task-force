@@ -589,7 +589,9 @@ let index basedir =
     List.map (fun (dir,switches,hashes) ->
         let status =
           if SSet.is_empty switches then
-            try
+            if Sys.file_exists (Filename.concat dir "timings") then
+              `No_results
+            else try
               `Running_since
                 (Unix.stat (Filename.concat dir "build.html")).Unix.st_mtime
             with Unix.Unix_error _ -> try
@@ -637,7 +639,7 @@ let index basedir =
         in
         let switches = Html.concat (List.rev switches) in
         let status_line = match status with
-          | `Complete | `Building _ -> <:html<&>>
+          | `Complete | `Building _ | `No_results -> <:html<&>>
           | `Running_since since ->
             <:html<<tr><th></th>
                    <td style="text-align:center" colspan="$int:SSet.cardinal all_switches$">

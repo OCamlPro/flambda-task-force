@@ -55,8 +55,8 @@ opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$
 
 for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
 for SWITCH in "${SWITCHES[@]}"; do
-    echo "=== UPGRADING SWITCH $OPAMSWITCH =="
-    opam upgrade ocaml all-bench --yes --switch $SWITCH --json $LOGDIR/$OPAMSWITCH.json
+    echo "=== UPGRADING SWITCH $SWITCH =="
+    opam upgrade ocaml all-bench --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
@@ -81,6 +81,7 @@ if [ "x$1" != "x--nowait" ]; then
     while [ $(loadavg) -gt 60 ]; do
         if [ $(($(date +%s) - STARTTIME)) -gt $((3600 * 12)) ]; then
             echo "COULD NOT START FOR THE PAST 12 HOURS; ABORTING RUN" >&2
+            unpublish
             exit 10
         else
             echo "System load detected, waiting to run bench (retrying in 5 minutes)"
