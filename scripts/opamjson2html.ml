@@ -45,6 +45,8 @@ let parse_status: J.json -> status = function
              | _ -> failwith "bad return code"),
             lmap JU.to_string (JU.to_list (e%"stdout")),
             lmap JU.to_string (JU.to_list (e%"stderr")))
+  | `Assoc ["exception", `String e] ->
+    Failed ("opam", 0, [], ["Opam raised exception:";e])
 
 let parse_result r =
   parse_action (r%"action"),
