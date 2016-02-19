@@ -7,7 +7,17 @@ let bench_switch_suffix = "+bench"
 let short_switch_name sw =
   Filename.chop_suffix sw bench_switch_suffix
 
+let date_of_dir d =
+  if String.length d > 15 then String.sub d 0 15 else d
+
 let ( @* ) g f x = g (f x)
+
+let rec underscore_to_space s =
+  try
+    Bytes.set s (Bytes.index s '_') ' ';
+    underscore_to_space s
+  with Not_found -> s
+
 
 let ignored_topics = Topic.([
   Topic (Gc.Heap_words, Gc);
@@ -266,13 +276,9 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
     in
     let titles =
       TSet.fold (fun t html ->
-          let rec sp s =
-            try Bytes.set s (Bytes.index s '_') ' '; sp s
-            with Not_found -> s
-          in
           <:html<$html$
                  <th class="scorebar-small">
-                   $str:sp (Topic.to_string t)$
+                   $str:underscore_to_space (Topic.to_string t)$
                  </th>&>>)
         topics <:html<<th>Benchmark</th>&>>
     in
@@ -446,7 +452,135 @@ let css = "
       border-right: 2px solid #666;
       border-bottom: 2px solid #666;
     }
+    div.graph {
+      width: 80%;
+      margin: auto;
+      height: 460px;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+    }
 "
+
+let bench_graph basedir bench =
+  let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:false basedir)) in
+  let data = (* date -> switch -> summary map *)
+    List.fold_left (fun date_map date_dir ->
+        let bench_dir =
+          let (/) = Filename.concat in
+          basedir / date_dir / bench
+        in
+        if Sys.file_exists bench_dir then
+          let switch_summary_map =
+            Util.FS.fold_files (fun switch_map f ->
+                if Filename.check_suffix f (bench_switch_suffix^".summary") then
+                  let switch = Filename.(chop_extension (basename f)) in
+                  try SMap.add switch (Summary.load_conv_exn f) switch_map
+                  with _ -> switch_map
+                else switch_map)
+              SMap.empty bench_dir
+          in
+          if SMap.is_empty switch_summary_map then date_map
+          else SMap.add (date_of_dir date_dir) switch_summary_map date_map
+        else date_map)
+      SMap.empty dirs
+  in
+  let all_switches, all_topics =
+    SMap.fold (fun _date swmap acc ->
+        SMap.fold (fun sw summary (allsw,allt) ->
+            SSet.add sw allsw,
+            TMap.fold (fun t _ allt -> TSet.add t allt)
+              summary.Summary.data allt)
+          swmap acc)
+      data (SSet.empty, TSet.empty)
+  in
+  let all_topics =
+    List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
+  in
+  let plot_topic topic =
+    let data_file =
+      let fn = Filename.temp_file "operf-bench-" ".data" in
+      let oc = open_out fn in
+      SMap.iter (fun date switch_summary_map ->
+          output_string oc date;
+          output_char oc ' ';
+          SSet.iter (fun sw ->
+              try
+                let summary = SMap.find sw switch_summary_map in
+                let aggr = TMap.find topic summary.Summary.data in
+                if not aggr.Summary.Aggr.success then raise Not_found;
+                Printf.fprintf oc "%f " aggr.Summary.Aggr.mean
+              with Not_found -> output_string oc ". ";)
+            all_switches;
+          output_char oc '\n')
+        data;
+      close_out oc;
+      fn
+    in
+    let svg_file =
+      Filename.temp_file "operf-bench-" ".svg"
+    in
+    let gp_file =
+      let fn = Filename.temp_file "operf-bench-" ".gp" in
+      let oc = open_out fn in
+      output_string oc
+        "set terminal svg size 900,460 dynamic enhanced mouse standalone;\n";
+      Printf.fprintf oc "set output \"%s\";\n" svg_file;
+      output_string oc "set xdata time; set timefmt \"%Y-%m-%d-%H%M\";\n";
+      output_string oc "set key top left;\n";
+      Printf.fprintf oc "set title \"%s %s\";\n"
+        (underscore_to_space (Topic.to_string topic)) (topic_unit topic);
+      let _ =
+        SSet.fold (fun sw i ->
+            Printf.fprintf oc
+              "%s \"%s\" using 1:%d with lines title \"%s\""
+              (if i=0 then "plot" else ",")
+              data_file
+              (i+2)
+              sw;
+            i+1)
+          all_switches 0
+      in
+      close_out oc;
+      fn
+    in
+    let gnuplot_ret =
+      (* not Lwt-aware... *)
+      Sys.command (Printf.sprintf "gnuplot %S" gp_file)
+    in
+    if gnuplot_ret <> 0 then failwith "Gnuplot error";
+    let svg = Util.File.string_of_file svg_file in
+    List.iter Sys.remove [data_file; gp_file; svg_file];
+    let cut_3_lines s =
+      let i = String.index s '\n' in
+      let i = String.index_from s (i+1) '\n' in
+      let i = String.index_from s (i+1) '\n' in
+      String.sub s (i+1) (String.length s - i - 1)
+    in
+    Xml.of_string (cut_3_lines svg) (* strip header *)
+  in
+  let svggraphs =
+    List.fold_left (fun acc t ->
+        <:html<$acc$
+               <div class="graph"><svg>$plot_topic t$</svg></div>&>>)
+      <:html<&>>
+      (TSet.elements all_topics)
+  in
+  <:html<
+    <html>
+      <head>
+        <title>Operf-macro, history of bench $str:bench$</title>
+        <style type="text/css">$str:css$
+        </style>
+      </head>
+      <body>
+        <h1>Operf-macro, history of bench $str:bench$</h1>
+        $svggraphs$
+      </body>
+    </html>
+  >>
+
 
 let hashcol hash =
   if String.length hash >= 6 then
@@ -468,8 +602,7 @@ let gen_full_page comp result =
   let sw_printname ((dir,_) as sw) =
     if comp <> result && snd comp = snd result then
       let d = Filename.basename dir in
-      (if String.length d > 15 then String.sub d 0 15 else d) ^"/"^
-      sw_name sw
+      date_of_dir d ^"/"^ sw_name sw
     else sw_name sw
   in
   let sw_hash (swdir, _ as sw) =
@@ -709,6 +842,21 @@ let serve basedir uri path args = match path with
            (Filename.concat basedir dirref, swref)
            (Filename.concat basedir dirtes, swtes)
        in
+       Server.respond_string
+         ~status:`OK
+         ~body:(Html.to_string page) ()
+     with Not_found ->
+       let body =
+         List.fold_left (fun acc (arg,value) ->
+             Printf.sprintf "%s\n%S = %S" acc arg value)
+           "Invalid comparison parameters:"
+           args
+       in
+       Server.respond_error ~body ())
+  | "/graph" ->
+    (try
+       let bench = List.assoc "bench" args in
+       let page = bench_graph basedir bench in
        Server.respond_string
          ~status:`OK
          ~body:(Html.to_string page) ()
