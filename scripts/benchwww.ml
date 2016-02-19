@@ -325,12 +325,19 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
                     <:html<$html$<td>-</td>&>>)
               topics <:html<&>>
           in
+          let link = "graph?bench=" ^ bench in
           let bname =
             if String.length bench <= 40 then
-              <:html<<td style="text-align:left;">$str:bench$</td>&>>
+              <:html<<td style="text-align:left;">
+                       <a href=$str:link$ style="text-decoration:none">
+                         $str:bench$
+                       </a>
+                     </td>&>>
             else
               <:html<<td style="text-align:left;" title="$str:bench$">
-                       $str:String.sub bench 0 40$
+                       <a href=$str:link$ style="text-decoration:none">
+                         $str:String.sub bench 0 40$
+                       </a>
                      </td>&>>
           in
           <:html<$html$<tr>$bname$$topics$</tr>&>>)
