@@ -439,7 +439,7 @@ let bench_graph basedir bench =
     let oc = open_out fn in
     let num_topics = TSet.cardinal all_topics in
     Printf.fprintf oc
-      "set terminal svg size 1200,%d dynamic enhanced mouse standalone;\n"
+      "set terminal svg size 1200,%d enhanced mouse standalone;\n"
       (num_topics * 600);
     Printf.fprintf oc "set output \"%s\";\n" svg_file;
     output_string oc
@@ -453,7 +453,10 @@ let bench_graph basedir bench =
     output_string oc "set key top left;\n";
     Printf.fprintf oc "set xrange [ %S : %S ];\n"
       (fst (SMap.min_binding data)) (fst (SMap.max_binding data));
-    Printf.fprintf oc "set multiplot layout %d,1;\n" num_topics;
+    Printf.fprintf oc "set multiplot \
+                       title \"Operf-macro, history of bench %s\" \
+                       layout %d,1;\n"
+      bench num_topics;
     let plot_topic topic data_file =
       Printf.fprintf oc "set title \"%s %s\";\n"
         (underscore_to_space (Topic.to_string topic)) (topic_unit topic);
@@ -488,24 +491,6 @@ let bench_graph basedir bench =
   let svg = Util.File.string_of_file svg_file in
   cleanup ();
   svg
-
-let graph_page basedir bench =
-  let link = "graph.svg?bench="^bench in
-  <:html<
-    <html>
-      <head>
-        <title>Operf-macro, history of bench $str:bench$</title>
-      </head>
-      <body>
-        <h1>Operf-macro, history of bench $str:bench$</h1>
-        <div style="width:80%; margin:auto;">
-          <embed src="$str:link$" type="image/svg+xml" width="100%">
-            SVG plots...
-          </embed>
-        </div>
-      </body>
-    </html>
-  >>
 
 let css = "
     table {
@@ -896,21 +881,6 @@ let serve basedir uri path args = match path with
        in
        Server.respond_error ~body ())
   | "/graph" ->
-    (try
-       let bench = List.assoc "bench" args in
-       let page = graph_page basedir bench in
-       Server.respond_string
-         ~status:`OK
-         ~body:(Html.to_string page) ()
-     with Not_found ->
-       let body =
-         List.fold_left (fun acc (arg,value) ->
-             Printf.sprintf "%s\n%S = %S" acc arg value)
-           "Invalid graph parameters:"
-           args
-       in
-       Server.respond_error ~body ())
-  | "/graph.svg" ->
     (try
        let bench = List.assoc "bench" args in
        let svg = bench_graph basedir bench in
