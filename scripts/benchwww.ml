@@ -681,25 +681,35 @@ let duration ts =
 let index basedir =
   let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true basedir)) in
   let dirs = List.sort compare dirs in
-  let dirs_switches =
-    List.fold_left (fun acc d ->
-        let switches =
-          Util.FS.fold_files (fun switches f ->
+  let dirs_switches, all_benches =
+    List.fold_left (fun (acc,all_benches) d ->
+        let switches, all_benches =
+          Util.FS.fold_files (fun (switches, all_benches) f ->
               if Filename.check_suffix f (bench_switch_suffix^".summary") then
-                SSet.add Filename.(basename (chop_extension f)) switches
-              else switches)
-            SSet.empty
+                SSet.add Filename.(basename (chop_extension f)) switches,
+                SSet.add Filename.(basename (dirname f)) all_benches
+              else switches, all_benches)
+            (SSet.empty, SSet.empty)
             d
         in
         if SSet.is_empty switches &&
            not (Sys.file_exists (Filename.concat d "stamp"))
-        then acc
-        else (d, switches) :: acc)
-      [] dirs
+        then acc, all_benches
+        else (d, switches) :: acc, all_benches)
+      ([], SSet.empty) dirs
   in
   let all_switches =
     List.fold_left (fun acc (d, switches) -> SSet.union acc switches)
       SSet.empty dirs_switches
+  in
+  let plots =
+    List.fold_left (fun acc bench ->
+        let target = "/graph?bench="^bench in
+        <:html<<li><a href="$str:target$">$str:bench$</a></li>&>>
+        :: acc
+      )
+      [] (SSet.elements all_benches)
+    |> List.rev
   in
   let switch_details =
     List.map (fun (d, switches) ->
@@ -815,13 +825,16 @@ let index basedir =
   <:html<
     <html>
       <head>
-        <title>Operf-macro flambda runs</title>
+        <title>Operf-macro benchmark results visualization</title>
         <style type="text/css">$str:css$</style>
       </head>
       <body>
-        <h1>Operf-macro flambda runs</h1>
+        <h1>Operf-macro benchmark results visualization</h1>
+        <h3>Plot a given benchmark</h3>
+          <ul class="benches">$list:plots$</ul>
+        <h3>Compare two runs</h3>
         <form action="compare">
-          <div style="position:fixed; top: 20px; right: 20px;">
+          <div style="position:fixed; bottom: 20px; right: 20px;">
              <input type="submit" value="Compare"/>
           </div>
           <table class="index">
