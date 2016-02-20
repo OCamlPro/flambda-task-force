@@ -489,6 +489,24 @@ let bench_graph basedir bench =
   cleanup ();
   svg
 
+let graph_page basedir bench =
+  let link = "graph.svg?bench="^bench in
+  <:html<
+    <html>
+      <head>
+        <title>Operf-macro, history of bench $str:bench$</title>
+      </head>
+      <body>
+        <h1>Operf-macro, history of bench $str:bench$</h1>
+        <div style="width:80%; margin:auto;">
+          <embed src="$str:link$" type="image/svg+xml" width="100%">
+            SVG plots...
+          </embed>
+        </div>
+      </body>
+    </html>
+  >>
+
 let css = "
     table {
       margin: auto;
@@ -880,7 +898,7 @@ let serve basedir uri path args = match path with
   | "/graph" ->
     (try
        let bench = List.assoc "bench" args in
-       let page = bench_graph basedir bench in
+       let page = graph_page basedir bench in
        Server.respond_string
          ~status:`OK
          ~body:(Html.to_string page) ()
@@ -888,7 +906,25 @@ let serve basedir uri path args = match path with
        let body =
          List.fold_left (fun acc (arg,value) ->
              Printf.sprintf "%s\n%S = %S" acc arg value)
-           "Invalid comparison parameters:"
+           "Invalid graph parameters:"
+           args
+       in
+       Server.respond_error ~body ())
+  | "/graph.svg" ->
+    (try
+       let bench = List.assoc "bench" args in
+       let svg = bench_graph basedir bench in
+       let headers =
+         Cohttp.Header.init_with "content-type" "image/svg+xml"
+       in
+       Server.respond_string ~headers
+         ~status:`OK
+         ~body:svg ()
+     with Not_found ->
+       let body =
+         List.fold_left (fun acc (arg,value) ->
+             Printf.sprintf "%s\n%S = %S" acc arg value)
+           "Invalid graph parameters:"
            args
        in
        Server.respond_error ~body ())
