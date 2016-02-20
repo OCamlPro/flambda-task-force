@@ -532,7 +532,14 @@ let bench_graph basedir bench =
       let fn = Filename.temp_file "operf-bench-" ".gp" in
       let oc = open_out fn in
       output_string oc
-        "set terminal svg size 900,460 dynamic enhanced mouse standalone;\n";
+        "set terminal svg size 900,460 dynamic enhanced;\n";
+      output_string oc
+        "set style line 1 lt 1 lw 1.2 lc rgb '#0072bd';\
+         set style line 2 lt 1 lw 1.2 lc rgb '#edb120';\
+         set style line 3 lt 1 lw 1.2 lc rgb '#d95319';\
+         set style line 4 lt 1 lw 1.2 lc rgb '#7e2f8e';\
+         set style line 5 lt 1 lw 1.2 lc rgb '#c21020';\
+         set style line 6 lt 1 lw 1.2 lc rgb '#77ac30';\n";
       Printf.fprintf oc "set output \"%s\";\n" svg_file;
       output_string oc "set xdata time; set timefmt \"%Y-%m-%d-%H%M\";\n";
       output_string oc "set key top left;\n";
@@ -541,10 +548,10 @@ let bench_graph basedir bench =
       let _ =
         SSet.fold (fun sw i ->
             Printf.fprintf oc
-              "%s \"%s\" using 1:%d with lines title \"%s\""
+              "%s \"%s\" using 1:%d with lines ls %d title \"%s\""
               (if i=0 then "plot" else ",")
               data_file
-              (i+2)
+              (i+2) (i+1)
               sw;
             i+1)
           all_switches 0
@@ -570,7 +577,7 @@ let bench_graph basedir bench =
   let svggraphs =
     List.fold_left (fun acc t ->
         <:html<$acc$
-               <div class="graph"><svg>$plot_topic t$</svg></div>&>>)
+               <div class="graph">$plot_topic t$</div>&>>)
       <:html<&>>
       (TSet.elements all_topics)
   in
