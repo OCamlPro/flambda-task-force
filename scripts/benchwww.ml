@@ -450,9 +450,11 @@ let bench_graph basedir bench =
        set style line 5 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#c21020';\n\
        set style line 6 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#77ac30';\n";
     output_string oc "set xdata time; set timefmt \"%Y-%m-%d-%H%M\";\n";
+    output_string oc "set format x \"%Y-%m-%d\";\n";
     output_string oc "set key top left;\n";
     Printf.fprintf oc "set xrange [ %S : %S ];\n"
       (fst (SMap.min_binding data)) (fst (SMap.max_binding data));
+    output_string oc "set lmargin 15;\n";
     Printf.fprintf oc "set multiplot \
                        title \"Operf-macro, history of bench %s\" \
                        layout %d,1;\n"
