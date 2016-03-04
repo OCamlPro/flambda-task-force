@@ -21,3 +21,6 @@ benchwww: benchwww.ml
 
 opamjson2html: opamjson2html.ml
 	ocamlfind ocamlopt -package yojson,re -linkpkg $< -o $@
+
+opamjsontimes: opamjsontimes.ml
+	ocamlfind ocamlopt -package yojson,re -linkpkg $< -o $@
