@@ -22,6 +22,23 @@ LOGDIR=$BASELOGDIR/$DATE
 
 OPERFDIR=~/.cache/operf/macro/
 
+LOCK=$BASELOGDIR/lock
+
+if [ -e $LOCK ]; then
+    RUNNING_PID=$(cat $LOCK)
+    if ps -p $RUNNING_PID >/dev/null; then
+        echo "Another run-bench.sh is running (pid $RUNNING_PID). Aborting." >&2
+        exit 1
+    else
+        echo "Removing stale lock file $LOCK." >&2
+        rm $LOCK
+    fi
+fi
+
+trap "rm $LOCK" EXIT
+
+echo $$ >$LOCK
+
 publish() {
     local FILES=$(cd $LOGDIR && for x in $*; do echo $DATE/$x; done)
     tar -C $BASELOGDIR -u $FILES -f $BASELOGDIR/results.tar
