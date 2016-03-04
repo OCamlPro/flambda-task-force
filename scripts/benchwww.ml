@@ -446,9 +446,10 @@ let bench_graph basedir bench =
       "set style line 1 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#0072bd';\n\
        set style line 2 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#edb120';\n\
        set style line 3 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#d95319';\n\
-       set style line 4 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#7e2f8e';\n\
+       set style line 4 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#de77ae';\n\
        set style line 5 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#c21020';\n\
-       set style line 6 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#77ac30';\n";
+       set style line 6 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#7e2f8e';\n\
+       set style line 7 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#77ac30';\n";
     output_string oc "set xdata time; set timefmt \"%Y-%m-%d-%H%M\";\n";
     output_string oc "set format x \"%Y-%m-%d\";\n";
     output_string oc "set key top left;\n";
