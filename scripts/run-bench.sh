@@ -10,7 +10,7 @@ unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
 
 OPERF_SWITCH=4.02.1
 
-SWITCHES=(comparison+bench flambda+bench flambda-classic+bench flambda-O2+bench flambda-opt+bench trunk+bench)
+SWITCHES=(experimental+bench flambda+bench flambda-classic+bench flambda-O2+bench flambda-opt+bench flambda-uc+bench trunk+bench)
 
 STARTTIME=$(date +%s)
 
