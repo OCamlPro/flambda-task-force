@@ -5,10 +5,12 @@ type pkg = string * string
 
 type action = Build | Install | Remove
 
+type output = Merged of string list | OutErr of string list * string list
+
 type status =
   | Ok
-  | Failed of string * int * string list * string list
-  (* cmd, code, stdout, stderr *)
+  | Failed of string * int * output
+  (* cmd, code, out *)
   | Aborted of (pkg * action) list
 
 type result = {
@@ -43,10 +45,14 @@ let parse_status: J.json -> status = function
              | `String s -> int_of_string s
              | `Int i -> i
              | _ -> failwith "bad return code"),
-            lmap JU.to_string (JU.to_list (e%"stdout")),
-            lmap JU.to_string (JU.to_list (e%"stderr")))
+            try
+              Merged (lmap JU.to_string (JU.to_list (e%"output")))
+            with Not_found ->
+              OutErr
+                (lmap JU.to_string (JU.to_list (e%"stdout")),
+                 lmap JU.to_string (JU.to_list (e%"stderr"))))
   | `Assoc ["exception", `String e] ->
-    Failed ("opam", 0, [], ["Opam raised exception:";e])
+    Failed ("opam", 0, Merged ["Opam raised exception:";e])
 
 let parse_result r =
   parse_action (r%"action"),
@@ -110,20 +116,28 @@ let html_status logs name version sw status =
     logs,
     Printf.sprintf "<a %s title=\"Failed dependencies: %s\">Aborted</a>"
       id (String.concat ", " causes)
-  | Some {status = Failed (cmd,i,stdout,stderr); _} ->
+  | Some {status = Failed (cmd,i,out); _} ->
     let logid = Printf.sprintf "log-%s-%s-%s" sw name version in
     Printf.sprintf
       "<div class=\"logs\" id=\"%s\">\n\
       \  <a class=\"close\" href=\"#close\">Close</a>\n\
       \  <h3>Error on %s.%s (%s)</h3>\n\
       \  <p>Command: <pre>%s</pre></p>\n\
-      \  <h4>Stdout</h4><pre>%s</pre>\n\
-      \  <h4>Stderr</h4><pre>%s</pre>\n\
+       %s\
        </div>\n"
       logid name version sw
       (escape cmd)
-      (escape (String.concat "\n" stdout))
-      (escape (String.concat "\n" stderr))
+      (match out with
+       | Merged output ->
+         Printf.sprintf
+           "  <h4>Output</h4><pre>%s</pre>\n"
+           (escape (String.concat "\n" output))
+       | OutErr (stdout, stderr) ->
+         Printf.sprintf
+           "  <h4>Stdout</h4><pre>%s</pre>\n\
+           \  <h4>Stderr</h4><pre>%s</pre>\n"
+         (escape (String.concat "\n" stdout))
+         (escape (String.concat "\n" stderr)))
     :: logs,
     Printf.sprintf "<a %s href=\"#%s\">Failure (%d)</a>" id logid i
   | None -> logs, Printf.sprintf "<a %s>-</a>" id
