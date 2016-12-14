@@ -393,14 +393,21 @@ let bench_graph basedir bench =
         else date_map)
       SMap.empty dirs
   in
-  let all_switches, all_topics =
+  let all_switches = (* only switches from latest run *)
+    try
+      let _date, swmap = SMap.max_binding data in
+      SSet.of_list (List.map fst (SMap.bindings swmap))
+    with Not_found -> SSet.empty
+  in
+  let all_topics =
     SMap.fold (fun _date swmap acc ->
-        SMap.fold (fun sw summary (allsw,allt) ->
-            SSet.add sw allsw,
-            TMap.fold (fun t _ allt -> TSet.add t allt)
-              summary.Summary.data allt)
+        SMap.fold (fun sw summary allt ->
+            if SSet.mem sw all_switches then
+              TMap.fold (fun t _ allt -> TSet.add t allt)
+                summary.Summary.data allt
+            else allt)
           swmap acc)
-      data (SSet.empty, TSet.empty)
+      data TSet.empty
   in
   let all_topics =
     List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
@@ -705,8 +712,9 @@ let index basedir =
       ([], SSet.empty) dirs
   in
   let all_switches =
-    List.fold_left (fun acc (d, switches) -> SSet.union acc switches)
-      SSet.empty dirs_switches
+    match dirs_switches with
+    | (_latest, switches)::_ -> switches
+    | [] -> SSet.empty
   in
   let plots =
     List.fold_left (fun acc bench ->
