@@ -6,11 +6,62 @@ export PATH=~/local/bin:$PATH
 
 unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
 
-# Prereq: all switches installed, with ocaml git-pinned (as well as other packages that need fixes)
+OPERF_SWITCH=operf
 
-OPERF_SWITCH=4.02.1
+SWITCHES=($(opam switch list -s |grep '+bench$'))
 
-SWITCHES=(experimental+bench flambda+bench flambda-classic+bench flambda-O2+bench flambda-opt+bench flambda-uc+bench trunk+bench)
+
+## Initial setup:
+#
+# opam 2.0~alpha6
+# the "operf" switch with operf-macro installed
+# the following repositories configured by default:
+#  1 benches git://github.com/OCamlPro/opam-bench-repo#opam2
+#  2 default https://opam.ocaml.org/2.0~dev
+#  3 overlay git://github.com/OCamlPro/opam-flambda-repository-overlay#opam2
+#
+# The switches to benches configured using the following function
+
+
+setup-new-switch() {
+    version="$1"; shift
+    variant="$1"; shift
+    target="$1"; shift
+    ocamlparam="$1"; shift
+    configflags="$*"; shift
+
+    name="${version}${variant:++$variant}"
+    configflags_escaped=${configflags:+ \"${configflags// /\" \"}\"}
+    setenv_line=${ocamlparam:+setenv: [OCAMLPARAM = \"_,$ocamlparam\"]}
+
+    opam switch create "$name+bench" --empty --no-switch
+    COMPILERDEF=$(mktemp /tmp/compilerdef.XXXX)
+    cat <<EOF >$COMPILERDEF
+opam-version: "2.0"
+name: "ocaml-variants"
+version: "$name"
+maintainer: "flambda@ocamlpro.com"
+flags: "compiler"
+build: [
+  ["./configure" "-prefix" prefix "-with-debug-runtime"$configflags_escaped]
+  [make "world"]
+  [make "world.opt"]
+]
+install: [make "install"]
+$setenv_line
+EOF
+    OPAMEDITOR="cp -f $COMPILERDEF" \
+      opam pin add ocaml-variants.$name "$target" --switch "$name+bench" --edit --yes </dev/null
+    rm -f $COMPILERDEF
+    opam switch set-base ocaml-variants --switch "$name+bench"
+}
+
+# Create bench switches:
+# setup-new-switch 4.03.1+dev   ""      "git://github.com/ocaml/ocaml#4.03"
+# setup-new-switch 4.04.1+dev   ""      "git://github.com/ocaml/ocaml#4.04"
+# setup-new-switch 4.05.0+trunk ""      "git://github.com/ocaml/ocaml#trunk"
+# setup-new-switch 4.05.0+trunk flambda "git://github.com/ocaml/ocaml#trunk" ""   -flambda
+# setup-new-switch 4.05.0+trunk opt     "git://github.com/ocaml/ocaml#trunk" O3=1 -flambda
 
 STARTTIME=$(date +%s)
 
@@ -66,14 +117,18 @@ echo "=== UPGRADING operf-macro at $DATE ==="
 touch $LOGDIR/stamp
 publish stamp
 
-opam update
+opam update --all
 
 opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
+
+BENCHES="frama-c-bench jsonm-bench lexifi-g2pp-bench patdiff-bench sauvola-bench yojson-bench kb-bench nbcodec-bench almabench-bench bdd-bench coq-bench sequence-bench menhir-bench compcert-bench minilight-bench numerical-analysis-bench cpdf-bench async-echo-bench core-micro-bench async-rpc-bench chameneos-bench thread-bench valet-bench cohttp-bench core-sequence-bench js_of_ocaml-bench"
+# disabled (takes forever): alt-ergo-bench
+
 
 for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
 for SWITCH in "${SWITCHES[@]}"; do
     echo "=== UPGRADING SWITCH $SWITCH =="
-    opam upgrade ocaml all-bench --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
+    opam upgrade $BENCHES --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
@@ -84,7 +139,7 @@ UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 echo -e "\n===== OPAM UPGRADE DONE in ${UPGRADE_TIME}s =====\n"
 
 
-eval $(opam config env --switch $SWITCH)
+eval $(opam config env --switch $OPERF_SWITCH)
 
 loadavg() {
   awk '{print 100*$1}' /proc/loadavg
@@ -119,7 +174,7 @@ ocaml-params() {
 }
 
 for SWITCH in "${SWITCHES[@]}"; do
-    opam show ocaml --switch $SWITCH --field pinned | sed 's/.*(\(.*\))/\1/' >$LOGDIR/${SWITCH%+bench}.hash
+    opam show ocaml-variants --switch $SWITCH --field source-hash >$LOGDIR/${SWITCH%+bench}.hash
     opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p' >$LOGDIR/${SWITCH%+bench}.params
     opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
 done
@@ -134,7 +189,7 @@ echo
 echo "=== BENCH START ==="
 
 for SWITCH in "${SWITCHES[@]}"; do
-    nice -n -5 opam config exec --switch $OPERF_SWITCH -- operf-macro run --switch $SWITCH
+    nice -n -5 opam config exec --switch $OPERF_SWITCH -- timeout 90m operf-macro run --switch $SWITCH
 done
 
 opam config exec --switch $OPERF_SWITCH -- operf-macro summarize -b csv >$LOGDIR/summary.csv
@@ -153,34 +208,6 @@ Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
 publish log timings summary.csv "*/*.summary"
-
-# Static logs (should not be needed anymore, but in case)
-(cat <<EOF
-<html>
-<head><title>Operf comparison $DATE</title></head>
-<body>
-<h2>Operf comparison $DATE</h2>
-<a href="build.html">Build logs</a>
-<ul>
-EOF
-for SWITCH in "${SWITCHES[@]}"; do
-    if [ "$SWITCH" = "comparison+bench" ]; then continue; fi
-    HASH=$(cat $LOGDIR/${SWITCH%+bench}.hash)
-    FILE="${SWITCH%+bench}@$HASH.html"
-    bench2html \
-        "$DATE ${SWITCH%+bench}@${HASH}" \
-        comparison+bench $SWITCH >$LOGDIR/$FILE
-    echo "<li><a href=\"$FILE\">${SWITCH%+bench}</a></li>"
-done
-cat <<EOF
-</ul>
-<p>Upgrade took $(hours $UPGRADE_TIME)</p>
-<p>Running benches took $(hours $BENCH_TIME)</p>
-<p>Total time $(hours $((UPGRADE_TIME + BENCH_TIME)))</p>
-</body>
-</html>
-EOF
-) >$LOGDIR/index.html
 
 cd $BASELOGDIR && echo "<html><head><title>bench index</title></head><body><ul>$(ls -d 201* latest | sed 's%\(.*\)%<li><a href="\1">\1</a></li>%')</ul></body></html>" >index.html
 
