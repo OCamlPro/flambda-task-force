@@ -6,63 +6,6 @@ export PATH=~/local/bin:$PATH
 
 unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
 
-OPERF_SWITCH=operf
-
-SWITCHES=($(opam switch list -s |grep '+bench$'))
-
-
-## Initial setup:
-#
-# opam 2.0~alpha6
-# the "operf" switch with operf-macro installed
-# the following repositories configured by default:
-#  1 benches git://github.com/OCamlPro/opam-bench-repo#opam2
-#  2 default https://opam.ocaml.org/2.0~dev
-#  3 overlay git://github.com/OCamlPro/opam-flambda-repository-overlay#opam2
-#
-# The switches to benches configured using the following function
-
-
-setup-new-switch() {
-    version="$1"; shift
-    variant="$1"; shift
-    target="$1"; shift
-    ocamlparam="$1"; shift
-    configflags="$*"; shift
-
-    name="${version}${variant:++$variant}"
-    configflags_escaped=${configflags:+ \"${configflags// /\" \"}\"}
-    setenv_line=${ocamlparam:+setenv: [OCAMLPARAM = \"_,$ocamlparam\"]}
-
-    opam switch create "$name+bench" --empty --no-switch
-    COMPILERDEF=$(mktemp /tmp/compilerdef.XXXX)
-    cat <<EOF >$COMPILERDEF
-opam-version: "2.0"
-name: "ocaml-variants"
-version: "$name"
-maintainer: "flambda@ocamlpro.com"
-flags: "compiler"
-build: [
-  ["./configure" "-prefix" prefix "-with-debug-runtime"$configflags_escaped]
-  [make "world"]
-  [make "world.opt"]
-]
-install: [make "install"]
-$setenv_line
-EOF
-    OPAMEDITOR="cp -f $COMPILERDEF" \
-      opam pin add ocaml-variants.$name "$target" --switch "$name+bench" --edit --yes </dev/null
-    rm -f $COMPILERDEF
-    opam switch set-base ocaml-variants --switch "$name+bench"
-}
-
-# Create bench switches:
-# setup-new-switch 4.03.1+dev   ""      "git://github.com/ocaml/ocaml#4.03"
-# setup-new-switch 4.04.1+dev   ""      "git://github.com/ocaml/ocaml#4.04"
-# setup-new-switch 4.05.0+trunk ""      "git://github.com/ocaml/ocaml#trunk"
-# setup-new-switch 4.05.0+trunk flambda "git://github.com/ocaml/ocaml#trunk" ""   -flambda
-# setup-new-switch 4.05.0+trunk opt     "git://github.com/ocaml/ocaml#trunk" O3=1 -flambda
-
 STARTTIME=$(date +%s)
 
 DATE=$(date +%Y-%m-%d-%H%M)
@@ -112,23 +55,58 @@ echo "Output and log written into $LOGDIR" >&2
 
 exec >$LOGDIR/log 2>&1
 
+echo "=== SETTING UP BENCH SWITCHES AT $DATE ==="
+
+## Initial setup:
+#
+# opam 2.0~alpha6 an "operf" switch with operf-macro installed (currently
+# working: ocaml 4.02.3, operf pinned to git://github.com/ocamlpro/ocaml-perf,
+# operf-macro pinned to git://github.com/OCamlPro/operf-macro#opam2)
+#
+# opam repo add benches git+https://github.com/AltGr/ocamlbench-repo --dont-select
+
+OPERF_SWITCH=operf
+
+opam update benches
+
+COMPILERS=($(opam list --no-switch --has-flag compiler --repo=benches --all-versions --short))
+SWITCHES=()
+INSTALLED_BENCH_SWITCHES=($(opam switch list -s |grep '+bench$'))
+
+for C in "${COMPILERS[@]}"; do
+    SWITCH=${C#*.}+bench
+    SWITCHES+=("$SWITCH")
+
+    if [[ ! " ${INSTALLED_BENCH_SWITCHES[@]} " =~ " $SWITCH " ]]; then
+        opam switch create "$SWITCH" --empty --no-switch --repositories benches,default
+    fi
+
+    opam pin add "${C%%.*}" "${C#*.}" --switch "$SWITCH" --yes --no-action
+    opam switch set-base "${C%%.*}" --switch "$SWITCH" --yes
+done
+
+# Remove switches that are no longer needed
+for SW in "${INSTALLED_BENCH_SWITCHES[@]}"; do
+    if [[ ! " ${SWITCHES[@]} " =~ " $SW " ]]; then
+        opam switch remove "$SW" --yes;
+    fi;
+done
+
 echo "=== UPGRADING operf-macro at $DATE ==="
 
 touch $LOGDIR/stamp
 publish stamp
 
-opam update --all
+opam update --switch $OPERF_SWITCH
 
 opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 
-BENCHES="frama-c-bench jsonm-bench lexifi-g2pp-bench patdiff-bench sauvola-bench yojson-bench kb-bench nbcodec-bench almabench-bench bdd-bench coq-bench sequence-bench menhir-bench compcert-bench minilight-bench numerical-analysis-bench cpdf-bench async-echo-bench core-micro-bench async-rpc-bench chameneos-bench thread-bench valet-bench cohttp-bench core-sequence-bench js_of_ocaml-bench"
-# disabled (takes forever): alt-ergo-bench
-
+BENCHES=($(opam list --no-switch --required-by all-bench --short --column name))
 
 for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
 for SWITCH in "${SWITCHES[@]}"; do
     echo "=== UPGRADING SWITCH $SWITCH =="
-    opam upgrade $BENCHES --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
+    opam upgrade "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
@@ -170,7 +148,7 @@ done
 ocaml-params() {
     SWITCH=$1; shift
     [ $# -eq 0 ]
-    opam config env --switch $SWITCH | sed -n 's/\(OCAMLPARAM="[^"]*"\).*$/\1/p'
+    opam config env --switch $SWITCH | sed -n "s/\(OCAMLPARAM='[^']*'\).*$/\1/p"
 }
 
 for SWITCH in "${SWITCHES[@]}"; do
