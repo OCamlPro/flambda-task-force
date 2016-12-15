@@ -55,6 +55,12 @@ echo "Output and log written into $LOGDIR" >&2
 
 exec >$LOGDIR/log 2>&1
 
+OPAMBIN=$(which opam)
+opam() {
+    echo "+opam $*" >&2
+    "$OPAMBIN" "$@"
+}
+
 echo "=== SETTING UP BENCH SWITCHES AT $DATE ==="
 
 ## Initial setup:
@@ -92,6 +98,7 @@ for SW in "${INSTALLED_BENCH_SWITCHES[@]}"; do
     fi;
 done
 
+echo
 echo "=== UPGRADING operf-macro at $DATE ==="
 
 touch $LOGDIR/stamp
@@ -102,10 +109,19 @@ opam update --switch $OPERF_SWITCH
 opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 
 BENCHES=($(opam list --no-switch --required-by all-bench --short --column name))
+ALL_BENCHES=($(opam list --no-switch --short --column name '*-bench'))
+DISABLED_BENCHES=()
+for B in "${ALL_BENCHES[@]}"; do
+    if [[ ! " ${BENCHES[@]} " =~ " $B " ]]; then
+        DISABLED_BENCHES+=("$B")
+    fi
+done
 
 for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
 for SWITCH in "${SWITCHES[@]}"; do
+    echo
     echo "=== UPGRADING SWITCH $SWITCH =="
+    opam remove "${DISABLED_BENCHES[@]}" --yes --switch $SWITCH
     opam upgrade "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
