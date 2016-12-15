@@ -586,13 +586,23 @@ let css = "
       border: 1px solid #aaac;
       border-collapse: collapse;
     }
-    span.radio {
+    span.radio input {
+      display: none;
+    }
+    span.radio label {
       font-size: 80%;
       padding: 2px;
-      border-top: 2px solid #fff;
-      border-left: 2px solid #fff;
-      border-right: 2px solid #666;
-      border-bottom: 2px solid #666;
+      border: 1px solid black;
+      border-radius: 5px;
+    }
+    span.radio input:checked + label {
+      box-shadow: inset 2px 2px 3px -2px;
+    }
+    span.radio input[name=reference]:checked + label {
+      background-color: #88f;
+    }
+    span.radio input[name=test]:checked + label {
+      background-color: #cc0;
     }
     ul.benches {
        list-style-type: none;
@@ -617,7 +627,7 @@ let hashcol hash =
 
 let hashstyle hash =
   Printf.sprintf
-    "background-color:%s;font-size:130%%;font-family:monospace"
+    "background-color:%s;font-family:\"monospace\";padding:1px;"
     (hashcol hash)
 
 let gen_full_page comp result =
@@ -693,12 +703,30 @@ let duration ts =
 
 let index basedir =
   let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:true basedir)) in
-  let dirs = List.sort compare dirs in
+  let dirs = List.sort (fun x y -> compare y x) dirs in
+  let latest = match dirs with
+    | latest::_ -> Some latest
+    | [] -> None
+  in
+  let rec get_all_switches = function
+    | latest::dirs ->
+      let switches =
+        Util.FS.ls ~glob:"*.hash" latest |>
+        List.map (fun f -> Filename.chop_extension f ^ bench_switch_suffix) |>
+        SSet.of_list
+      in
+      if SSet.is_empty switches then get_all_switches dirs
+      else switches
+    | [] -> SSet.empty
+  in
+  let all_switches = get_all_switches dirs in
   let dirs_switches, all_benches =
     List.fold_left (fun (acc,all_benches) d ->
         let switches, all_benches =
           Util.FS.fold_files (fun (switches, all_benches) f ->
-              if Filename.check_suffix f (bench_switch_suffix^".summary") then
+              if Filename.check_suffix f (bench_switch_suffix^".summary") &&
+                 SSet.mem Filename.(basename (chop_extension f)) all_switches
+              then
                 SSet.add Filename.(basename (chop_extension f)) switches,
                 SSet.add Filename.(basename (dirname f)) all_benches
               else switches, all_benches)
@@ -706,15 +734,11 @@ let index basedir =
             d
         in
         if SSet.is_empty switches &&
-           not (Sys.file_exists (Filename.concat d "stamp"))
+           (not (Sys.file_exists (Filename.concat d "stamp")) ||
+            Some d <> latest)
         then acc, all_benches
         else (d, switches) :: acc, all_benches)
       ([], SSet.empty) dirs
-  in
-  let all_switches =
-    match dirs_switches with
-    | (_latest, switches)::_ -> switches
-    | [] -> SSet.empty
   in
   let plots =
     List.fold_left (fun acc bench ->
@@ -726,7 +750,7 @@ let index basedir =
     |> List.rev
   in
   let switch_details =
-    List.map (fun (d, switches) ->
+    List.rev_map (fun (d, switches) ->
         let hashes =
           List.fold_left (fun hashes swname ->
               let hash =
@@ -745,7 +769,16 @@ let index basedir =
   let thead =
     let sws =
       SSet.fold (fun s acc ->
-          <:html<<th>$str:short_switch_name s$</th>&>> :: acc
+          let title =
+            let s = short_switch_name s in
+            match Re.split Re.(compile (char '+')) s with
+            | [version; branch] ->
+              <:html<$str:version$+$str:branch$&>>
+            | version::branch::opts ->
+              <:html<$str:version$+$str:branch$<br/>+$str:String.concat "+" opts$>>
+            | _ -> <:html<$str:s$>>
+          in
+          <:html<<th style="vertical-align: top;">$title$</th>&>> :: acc
         )
         all_switches []
       |> List.rev
@@ -787,12 +820,15 @@ let index basedir =
                     try SMap.find sw hashes with Not_found -> "________"
                   in
                   let value = Filename.basename dir ^"/"^ sw in
+                  let id = Filename.basename dir ^"-"^ sw in
                   let inputs =
                     if status = `Complete then
                       <:html<
                       <span class="radio">
-                      <input type="radio" name="test" value="$str:value$"/>Test |
-                      <input type="radio" name="reference" value="$str:value$"/>Ref
+                      <input type="radio" id=$str:"test-"^id$ name="test" value="$str:value$"/>
+                      <label for=$str:"test-"^id$>tst</label>
+                      <input type="radio" id=$str:"ref-"^id$ name="reference" value="$str:value$"/>
+                      <label for=$str:"ref-"^id$>ref</label>
                     </span>&>>
                     else <:html<&>>
                   in
@@ -831,7 +867,7 @@ let index basedir =
         let log_link =
           if Sys.file_exists (Filename.concat dir "log") then
             let lnk = Filename.basename dir ^"/log" in
-            <:html<<a href="$str:lnk$">(log)</a>&>>
+            <:html< (<a href="$str:lnk$">log</a>)&>>
           else <:html<&>>
         in
         <:html<<tr>
