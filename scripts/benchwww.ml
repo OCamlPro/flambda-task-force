@@ -828,8 +828,14 @@ let index basedir =
           else
             <:html<<a title="$str:timings$">$str:name$</a>&>>
         in
+        let log_link =
+          if Sys.file_exists (Filename.concat dir "log") then
+            let lnk = Filename.basename dir ^"/log" in
+            <:html<<a href="$str:lnk$">(log)</a>&>>
+          else <:html<&>>
+        in
         <:html<<tr>
-          <th>$build_link$</th>
+          <th>$build_link$$log_link$</th>
           $switches$
         </tr>
         $status_line$&>>)
