@@ -125,8 +125,6 @@ publish stamp
 opam update --check --switch $OPERF_SWITCH
 HAS_CHANGES=$((HAS_CHANGES * $?))
 
-opam upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
-
 BENCHES=($(opam list --no-switch --required-by all-bench --short --column name))
 ALL_BENCHES=($(opam list --no-switch --short --column name '*-bench'))
 DISABLED_BENCHES=()
@@ -140,6 +138,15 @@ for SWITCH in "${SWITCHES[@]}"; do
     opam update --check --dev --switch $SWITCH
     HAS_CHANGES=$((HAS_CHANGES * $?))
 done
+
+if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
+    echo "Lazy mode, no changes: not running benches"
+    unpublish
+    exit 0
+fi
+
+opam upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
+
 for SWITCH in "${SWITCHES[@]}"; do
     echo
     echo "=== UPGRADING SWITCH $SWITCH =="
@@ -155,11 +162,6 @@ UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 
 echo -e "\n===== OPAM UPGRADE DONE in ${UPGRADE_TIME}s =====\n"
 
-if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
-    echo "Lazy mode, no changes: not running benches"
-    unpublish
-    exit 0
-fi
 
 eval $(opam config env --switch $OPERF_SWITCH)
 
