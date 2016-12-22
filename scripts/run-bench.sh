@@ -123,6 +123,8 @@ touch $LOGDIR/stamp
 publish stamp
 
 opam update --check --switch $OPERF_SWITCH
+
+opam upgrade --check --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 HAS_CHANGES=$((HAS_CHANGES * $?))
 
 BENCHES=($(opam list --no-switch --required-by all-bench --short --column name))
@@ -144,8 +146,6 @@ if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
     unpublish
     exit 0
 fi
-
-opam upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 
 for SWITCH in "${SWITCHES[@]}"; do
     echo
