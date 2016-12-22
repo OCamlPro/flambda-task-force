@@ -2,6 +2,23 @@
 
 shopt -s nullglob
 
+OPT_NOWAIT=
+OPT_LAZY=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --nowait) OPT_NOWAIT=1;;
+        --lazy) OPT_LAZY=1;;
+        *)
+            cat <<EOF
+Unknown option $1, options are:
+  --nowait    don't wait for the system load to settle down before benches
+  --lazy      only run the benches if upstream changes are detected
+EOF
+            exit 1
+    esac
+    shift
+done
+
 export PATH=~/local/bin:$PATH
 
 unset OPAMROOT OPAMSWITCH OCAMLPARAM OCAMLRUNPARAM
@@ -73,7 +90,8 @@ echo "=== SETTING UP BENCH SWITCHES AT $DATE ==="
 
 OPERF_SWITCH=operf
 
-opam update benches
+opam update --check benches
+HAS_CHANGES=$?
 
 COMPILERS=($(opam list --no-switch --has-flag compiler --repo=benches --all-versions --short))
 SWITCHES=()
@@ -104,9 +122,10 @@ echo "=== UPGRADING operf-macro at $DATE ==="
 touch $LOGDIR/stamp
 publish stamp
 
-opam update --switch $OPERF_SWITCH
+opam update --check --switch $OPERF_SWITCH
+HAS_CHANGES=$((HAS_CHANGES * $?))
 
-opam install --upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
+opam upgrade --yes operf-macro --switch $OPERF_SWITCH --json $LOGDIR/$OPERF_SWITCH.json
 
 BENCHES=($(opam list --no-switch --required-by all-bench --short --column name))
 ALL_BENCHES=($(opam list --no-switch --short --column name '*-bench'))
@@ -117,13 +136,16 @@ for B in "${ALL_BENCHES[@]}"; do
     fi
 done
 
-for SWITCH in "${SWITCHES[@]}"; do opam update --dev --switch $SWITCH; done
+for SWITCH in "${SWITCHES[@]}"; do
+    opam update --check --dev --switch $SWITCH
+    HAS_CHANGES=$((HAS_CHANGES * $?))
+done
 for SWITCH in "${SWITCHES[@]}"; do
     echo
     echo "=== UPGRADING SWITCH $SWITCH =="
     opam remove "${DISABLED_BENCHES[@]}" --yes --switch $SWITCH
     COMP=($(opam list --base --short --switch $SWITCH))
-    opam upgrade "${COMP[@]}" "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
+    opam upgrade --all "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
 LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
@@ -133,6 +155,11 @@ UPGRADE_TIME=$(($(date +%s) - STARTTIME))
 
 echo -e "\n===== OPAM UPGRADE DONE in ${UPGRADE_TIME}s =====\n"
 
+if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
+    echo "Lazy mode, no changes: not running benches"
+    unpublish
+    exit 0
+fi
 
 eval $(opam config env --switch $OPERF_SWITCH)
 
@@ -140,7 +167,7 @@ loadavg() {
   awk '{print 100*$1}' /proc/loadavg
 }
 
-if [ "x$1" != "x--nowait" ]; then
+if [ -z "$OPT_NOWAIT" ]; then
 
     # let the loadavg settle down...
     sleep 60
