@@ -205,7 +205,7 @@ ocaml-params() {
     opam config env --switch $SWITCH | sed -n "s/\(OCAMLPARAM='[^']*'\).*$/\1/p"
 }
 
-for SWITCH in "${BENCH_SWITCHES[@]}"; do
+for SWITCH in "${SWITCHES[@]}"; do
     opam show ocaml-variants --switch $SWITCH --field source-hash >$LOGDIR/${SWITCH%+bench}.hash
     ocaml-params $SWITCH >$LOGDIR/${SWITCH%+bench}.params
     opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
