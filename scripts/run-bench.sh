@@ -137,17 +137,25 @@ for B in "${ALL_BENCHES[@]}"; do
 done
 
 for SWITCH in "${SWITCHES[@]}"; do
-    opam update --check --dev --switch $SWITCH
-    HAS_CHANGES=$((HAS_CHANGES * $?))
+    if opam update --check --dev --switch $SWITCH; then
+        CHANGED_SWITCHES+=("$SWITCH")
+    fi
 done
 
 if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
-    echo "Lazy mode, no changes: not running benches"
-    unpublish
-    exit 0
+    if [ "${#CHANGED_SWITCHES[*]}" -eq 0 ] ; then
+        echo "Lazy mode, no changes: not running benches"
+        unpublish
+        exit 0
+    else
+        echo "Lazy mode, only running benches on: ${CHANGED_SWITCHES[*]}"
+        BENCH_SWITCHES=("${CHANGED_SWITCHES[@]}")
+    fi
+else
+    BENCH_SWITCHES=("${SWITCHES[@]}")
 fi
 
-for SWITCH in "${SWITCHES[@]}"; do
+for SWITCH in "${BENCH_SWITCHES[@]}"; do
     echo
     echo "=== UPGRADING SWITCH $SWITCH =="
     opam remove "${DISABLED_BENCHES[@]}" --yes --switch $SWITCH
@@ -155,7 +163,7 @@ for SWITCH in "${SWITCHES[@]}"; do
     opam upgrade --all "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
-LOGSWITCHES=("${SWITCHES[@]/#/$LOGDIR/}")
+LOGSWITCHES=("${BENCH_SWITCHES[@]/#/$LOGDIR/}")
 opamjson2html ${LOGSWITCHES[@]/%/.json*} >$LOGDIR/build.html
 
 UPGRADE_TIME=$(($(date +%s) - STARTTIME))
@@ -197,7 +205,7 @@ ocaml-params() {
     opam config env --switch $SWITCH | sed -n "s/\(OCAMLPARAM='[^']*'\).*$/\1/p"
 }
 
-for SWITCH in "${SWITCHES[@]}"; do
+for SWITCH in "${BENCH_SWITCHES[@]}"; do
     opam show ocaml-variants --switch $SWITCH --field source-hash >$LOGDIR/${SWITCH%+bench}.hash
     ocaml-params $SWITCH >$LOGDIR/${SWITCH%+bench}.params
     opam pin --switch $SWITCH >$LOGDIR/${SWITCH%+bench}.pinned
@@ -212,7 +220,7 @@ BENCH_START_TIME=$(date +%s)
 echo
 echo "=== BENCH START ==="
 
-for SWITCH in "${SWITCHES[@]}"; do
+for SWITCH in "${BENCH_SWITCHES[@]}"; do
     nice -n -5 opam config exec --switch $OPERF_SWITCH -- timeout 90m operf-macro run --switch $SWITCH
 done
 
