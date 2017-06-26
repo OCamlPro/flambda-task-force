@@ -370,70 +370,7 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
           $html_logs$
   >>
 
-let bench_graph_data basedir bench =
-  let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:false basedir)) in
-  let data = (* date -> switch -> summary map *)
-    List.fold_left (fun date_map date_dir ->
-        let bench_dir =
-          let (/) = Filename.concat in
-          basedir / date_dir / bench
-        in
-        if Sys.file_exists bench_dir then
-          let switch_summary_map =
-            Util.FS.fold_files (fun switch_map f ->
-                if Filename.check_suffix f (bench_switch_suffix^".summary") then
-                  let switch = Filename.(chop_extension (basename f)) in
-                  try SMap.add switch (Summary.load_conv_exn f) switch_map
-                  with _ -> switch_map
-                else switch_map)
-              SMap.empty bench_dir
-          in
-          if SMap.is_empty switch_summary_map then date_map
-          else SMap.add (date_of_dir date_dir) switch_summary_map date_map
-        else date_map)
-      SMap.empty dirs
-  in
-  let all_switches = (* only switches from latest run *)
-    try
-      let _date, swmap = SMap.max_binding data in
-      List.map fst (SMap.bindings swmap)
-    with Not_found -> SSet.empty
-  in
-  let all_topics =
-    SMap.fold (fun _date swmap acc ->
-        SMap.fold (fun sw summary allt ->
-            if SSet.mem sw all_switches then
-              TMap.fold (fun t _ allt -> TSet.add t allt)
-                summary.Summary.data allt
-            else allt)
-          swmap acc)
-      data TSet.empty
-  in
-  let all_topics =
-    List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
-  in
-  let topic_json topic =
-    SMap.map (fun date switch_summary_map ->
-        `O (
-          ("date", `String date) ::
-          List.map (fun sw ->
-              sw,
-              try
-                let summary = SMap.find sw switch_summary_map in
-                let aggr = TMap.find topic summary.Summary.data in
-                if not aggr.Summary.Aggr.success then raise Not_found;
-                `Float aggr.Summary.Aggr.mean
-              with Not_found -> `Null)
-            all_switches
-        ))
-      data
-  in
-  `O (
-    ("switches", `A (List.map (fun s -> `String s) all_switches)) ::
-    List.map (fun t -> t, topic_json t) (TSet.elements all_topics)
-  )
-
-let bench_graph basedir bench =
+let bench_graph_data basedir bench : Json.value =
   let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:false basedir)) in
   let data = (* date -> switch -> summary map *)
     List.fold_left (fun date_map date_dir ->
@@ -462,6 +399,7 @@ let bench_graph basedir bench =
       SSet.of_list (List.map fst (SMap.bindings swmap))
     with Not_found -> SSet.empty
   in
+  let switch_list = SSet.elements all_switches in
   let all_topics =
     SMap.fold (fun _date swmap acc ->
         SMap.fold (fun sw summary allt ->
@@ -475,95 +413,94 @@ let bench_graph basedir bench =
   let all_topics =
     List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
   in
-  let plotscript_js = Printf.sprintf {js|
-    function plot(data) {
-      
-    }
-
-    Plotly.d3.csv("graph-data?bench=%s&topic=%s&switches=%s")
-    var data = {
-      name: %S,
-      x: 
-
-|js}
-      bench topic (String.concat "," all_switches) topic
+  let topic_json topic =
+    List.map (fun (date, switch_summary_map) ->
+        `O (
+          ("date", `String date) ::
+          List.fold_left (fun acc sw ->
+              try
+                let summary = SMap.find sw switch_summary_map in
+                let aggr = TMap.find topic summary.Summary.data in
+                if not aggr.Summary.Aggr.success then raise Not_found;
+                (sw, `Float aggr.Summary.Aggr.mean) :: acc
+              with Not_found -> acc)
+            [] (List.rev switch_list)
+        ))
+      (SMap.bindings data)
   in
-  let html = <:html<
+  `O [
+    "switches", `A (List.map (fun s -> `String s) switch_list);
+    "topics",
+    `O (List.map (fun t ->
+        Topic.to_string t,
+        `O [
+          "unit", `String (topic_unit t);
+          "values", `A (topic_json t)
+        ])
+        (TSet.elements all_topics))
+  ]
+
+let bench_graph basedir bench =
+  let plotscript_js = Printf.sprintf "\
+function layout(title,unit) {
+  return {
+    yaxis: { title: unit },
+    xaxis: { title: 'date', showgrid: false },
+    margin: { l: 60, b: 220, r: 10, t: 20 },
+    height: 800
+  };
+}
+
+function topic_plots (switches, data) {
+  return (switches.map (function(sw) {
+    return {
+      name: sw,
+      x: data.map(function(d){return d.date;}),
+      y: data.map(function(d){return d[sw];}),
+      type: 'scatter',
+      connectgaps: true
+    };
+  }))
+}
+var bench_data;
+var topics;
+function plot(topic) {
+  let t = bench_data.topics[topic];
+  Plotly.newPlot('plot',
+                 topic_plots(bench_data.switches, t.values),
+                 layout(topic, t.unit));
+}
+Plotly.d3.json('/graph-data?bench=%s',function(data){
+  bench_data = data[0];
+  topics = Object.keys (bench_data.topics);
+  plot(topics[0]);
+  let topiclist = document.getElementById('topics');
+  for (t of topics) {
+    let el = document.createElement('option');
+    el.value = t;
+    el.textContent = t;
+    topiclist.appendChild(el);
+  }
+  topiclist.addEventListener('change',function(event){plot(event.target.value);},false);
+});
+"
+      bench
+  in
+  <:html<
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8"></meta>
   <title>Operf-macro, history of bench $str:bench$</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
+  <h2>Results for $str:bench$ over time</h2>
+  <div>Plot for measure <select id="topics"></select></div>
   <div id="plot" style="width: 100%; height: 100%;"></div>
 
-  <script>$src:plotscript_js$</script>
+  <script>$str:plotscript_js$</script>
 </body>
-</html>
 >>
-  in
-  
-  let gp_file =
-    let fn = Filename.temp_file "operf-bench-" ".gp" in
-    let oc = open_out fn in
-    let num_topics = TSet.cardinal all_topics in
-    Printf.fprintf oc
-      "set terminal svg size 1200,%d enhanced mouse standalone;\n"
-      (num_topics * 600);
-    Printf.fprintf oc "set output \"%s\";\n" svg_file;
-    output_string oc
-      "set style line 1 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#0072bd';\n\
-       set style line 2 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#edb120';\n\
-       set style line 3 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#d95319';\n\
-       set style line 4 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#de77ae';\n\
-       set style line 5 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#c21020';\n\
-       set style line 6 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#7e2f8e';\n\
-       set style line 7 lt 1 lw 1.1 pt 7 ps 0.3 lc rgb '#77ac30';\n";
-    output_string oc "set xdata time; set timefmt \"%Y-%m-%d-%H%M\";\n";
-    output_string oc "set format x \"%Y-%m-%d\";\n";
-    output_string oc "set key top left;\n";
-    Printf.fprintf oc "set xrange [ %S : %S ];\n"
-      (fst (SMap.min_binding data)) (fst (SMap.max_binding data));
-    output_string oc "set lmargin 15;\n";
-    Printf.fprintf oc "set multiplot \
-                       title \"Operf-macro, history of bench %s\" \
-                       layout %d,1;\n"
-      bench num_topics;
-    let plot_topic topic data_file =
-      Printf.fprintf oc "set title \"%s %s\";\n"
-        (underscore_to_space (Topic.to_string topic)) (topic_unit topic);
-      SSet.fold (fun sw i ->
-          Printf.fprintf oc
-            "%s \"%s\" using 1:%d with linespoints ls %d title \"%s\""
-            (if i=0 then "plot" else ",\\\n    ")
-            data_file
-            (i+2) (i+1)
-            (short_switch_name sw);
-          i+1)
-        all_switches 0
-      |> ignore;
-      output_string oc ";\n\n"
-    in
-    TMap.iter plot_topic data_files;
-    output_string oc "unset multiplot;\n";
-    close_out oc;
-    fn
-  in
-  let gnuplot_ret =
-    (* not Lwt-aware... *)
-    Sys.command (Printf.sprintf "gnuplot %S" gp_file)
-  in
-  let cleanup () =
-    let rm fn = if Sys.file_exists fn then Sys.remove fn in
-    rm gp_file;
-    TMap.iter (fun _ fn -> rm fn) data_files;
-    rm svg_file
-  in
-  if gnuplot_ret <> 0 then (cleanup (); failwith "Gnuplot error");
-  let svg = Util.File.string_of_file svg_file in
-  cleanup ();
-  svg
 
 let css = "
     table {
@@ -999,13 +936,10 @@ let serve basedir uri path args = match path with
   | "/graph" ->
     (try
        let bench = List.assoc "bench" args in
-       let svg = bench_graph basedir bench in
-       let headers =
-         Cohttp.Header.init_with "content-type" "image/svg+xml"
-       in
-       Server.respond_string ~headers
+       let page = bench_graph basedir bench in
+       Server.respond_string
          ~status:`OK
-         ~body:svg ()
+         ~body:(Html.to_string page) ()
      with Not_found ->
        let body =
          List.fold_left (fun acc (arg,value) ->
@@ -1019,11 +953,11 @@ let serve basedir uri path args = match path with
        let bench = List.assoc "bench" args in
        let data = bench_graph_data basedir bench in
        let headers =
-         Cohttp.Header.init_with "content-type" "application/json"
+         Cohttp.Header.init_with "content-type" "application/json; charset=utf-8"
        in
        Server.respond_string ~headers
          ~status:`OK
-         ~body:data ()
+         ~body:(Json.to_string data) ()
      with Not_found ->
        let body =
          List.fold_left (fun acc (arg,value) ->
@@ -1035,9 +969,9 @@ let serve basedir uri path args = match path with
   | f when Util.FS.is_file (Filename.concat basedir f) = Some true ->
     let headers =
       if Filename.check_suffix f ".html" then
-        Cohttp.Header.init_with "content-type" "text/html"
+        Cohttp.Header.init_with "content-type" "text/html; charset=utf-8"
       else
-        Cohttp.Header.init_with "content-type" "text/plain"
+        Cohttp.Header.init_with "content-type" "text/plain; charset=utf-8"
     in
     Server.respond_file ~headers
       ~fname:(Server.resolve_local_file ~docroot:basedir ~uri) ()
