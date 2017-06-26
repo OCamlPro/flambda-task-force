@@ -370,6 +370,69 @@ let collect (comparison_dir,comparison_switch) (result_dir,result_switch) =
           $html_logs$
   >>
 
+let bench_graph_data basedir bench =
+  let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:false basedir)) in
+  let data = (* date -> switch -> summary map *)
+    List.fold_left (fun date_map date_dir ->
+        let bench_dir =
+          let (/) = Filename.concat in
+          basedir / date_dir / bench
+        in
+        if Sys.file_exists bench_dir then
+          let switch_summary_map =
+            Util.FS.fold_files (fun switch_map f ->
+                if Filename.check_suffix f (bench_switch_suffix^".summary") then
+                  let switch = Filename.(chop_extension (basename f)) in
+                  try SMap.add switch (Summary.load_conv_exn f) switch_map
+                  with _ -> switch_map
+                else switch_map)
+              SMap.empty bench_dir
+          in
+          if SMap.is_empty switch_summary_map then date_map
+          else SMap.add (date_of_dir date_dir) switch_summary_map date_map
+        else date_map)
+      SMap.empty dirs
+  in
+  let all_switches = (* only switches from latest run *)
+    try
+      let _date, swmap = SMap.max_binding data in
+      List.map fst (SMap.bindings swmap)
+    with Not_found -> SSet.empty
+  in
+  let all_topics =
+    SMap.fold (fun _date swmap acc ->
+        SMap.fold (fun sw summary allt ->
+            if SSet.mem sw all_switches then
+              TMap.fold (fun t _ allt -> TSet.add t allt)
+                summary.Summary.data allt
+            else allt)
+          swmap acc)
+      data TSet.empty
+  in
+  let all_topics =
+    List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
+  in
+  let topic_json topic =
+    SMap.map (fun date switch_summary_map ->
+        `O (
+          ("date", `String date) ::
+          List.map (fun sw ->
+              sw,
+              try
+                let summary = SMap.find sw switch_summary_map in
+                let aggr = TMap.find topic summary.Summary.data in
+                if not aggr.Summary.Aggr.success then raise Not_found;
+                `Float aggr.Summary.Aggr.mean
+              with Not_found -> `Null)
+            all_switches
+        ))
+      data
+  in
+  `O (
+    ("switches", `A (List.map (fun s -> `String s) all_switches)) ::
+    List.map (fun t -> t, topic_json t) (TSet.elements all_topics)
+  )
+
 let bench_graph basedir bench =
   let dirs = Util.FS.(List.filter is_dir_exn (ls ~prefix:false basedir)) in
   let data = (* date -> switch -> summary map *)
@@ -412,35 +475,35 @@ let bench_graph basedir bench =
   let all_topics =
     List.fold_left (fun acc t -> TSet.remove t acc) all_topics ignored_topics
   in
-  let topic_data_file topic =
-    let fn =
-      Filename.temp_file ("operf-bench-"^Topic.to_string topic^"-") ".data"
-    in
-    let oc = open_out fn in
-    SMap.iter (fun date switch_summary_map ->
-        output_string oc date;
-        output_char oc ' ';
-        SSet.iter (fun sw ->
-            try
-              let summary = SMap.find sw switch_summary_map in
-              let aggr = TMap.find topic summary.Summary.data in
-              if not aggr.Summary.Aggr.success then raise Not_found;
-              Printf.fprintf oc "%f " aggr.Summary.Aggr.mean
-            with Not_found -> output_string oc ". ";)
-          all_switches;
-        output_char oc '\n')
-      data;
-    close_out oc;
-    fn
+  let plotscript_js = Printf.sprintf {js|
+    function plot(data) {
+      
+    }
+
+    Plotly.d3.csv("graph-data?bench=%s&topic=%s&switches=%s")
+    var data = {
+      name: %S,
+      x: 
+
+|js}
+      bench topic (String.concat "," all_switches) topic
   in
-  let data_files =
-    TSet.fold
-      (fun topic acc -> TMap.add topic (topic_data_file topic) acc)
-      all_topics TMap.empty
+  let html = <:html<
+<head>
+  <meta charset="UTF-8">
+  <title>Operf-macro, history of bench $str:bench$</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+  <div id="plot" style="width: 100%; height: 100%;"></div>
+
+  <script>$src:plotscript_js$</script>
+</body>
+</html>
+>>
   in
-  let svg_file =
-    Filename.temp_file "operf-bench-" ".svg"
-  in
+  
   let gp_file =
     let fn = Filename.temp_file "operf-bench-" ".gp" in
     let oc = open_out fn in
@@ -948,6 +1011,24 @@ let serve basedir uri path args = match path with
          List.fold_left (fun acc (arg,value) ->
              Printf.sprintf "%s\n%S = %S" acc arg value)
            "Invalid graph parameters:"
+           args
+       in
+       Server.respond_error ~body ())
+  | "/graph-data" ->
+    (try
+       let bench = List.assoc "bench" args in
+       let data = bench_graph_data basedir bench in
+       let headers =
+         Cohttp.Header.init_with "content-type" "application/json"
+       in
+       Server.respond_string ~headers
+         ~status:`OK
+         ~body:data ()
+     with Not_found ->
+       let body =
+         List.fold_left (fun acc (arg,value) ->
+             Printf.sprintf "%s\n%S = %S" acc arg value)
+           "Invalid graph-data parameters:"
            args
        in
        Server.respond_error ~body ())
