@@ -160,7 +160,7 @@ for SWITCH in "${BENCH_SWITCHES[@]}"; do
     echo "=== UPGRADING SWITCH $SWITCH =="
     opam remove "${DISABLED_BENCHES[@]}" --yes --switch $SWITCH
     COMP=($(opam list --base --short --switch $SWITCH))
-    opam upgrade --all "${BENCHES[@]}" --soft --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
+    opam upgrade --all "${BENCHES[@]}" --best-effort --yes --switch $SWITCH --json $LOGDIR/$SWITCH.json
 done
 
 LOGSWITCHES=("${BENCH_SWITCHES[@]/#/$LOGDIR/}")
