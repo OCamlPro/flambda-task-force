@@ -4,6 +4,8 @@
 # Config
 ###
 
+ulimit -s unlimited
+
 export PATH=~/local/bin:$PATH
 
 TEST_SWITCHES=(comparison flambda)

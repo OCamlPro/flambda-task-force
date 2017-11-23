@@ -10,6 +10,8 @@ export OPAMSWITCH
 
 export OPAMJOBS=6
 
+ulimit -s unlimited
+
 #################
 # SETUP
 #################
