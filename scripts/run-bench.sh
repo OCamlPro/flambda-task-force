@@ -50,19 +50,37 @@ trap "rm $LOCK" EXIT
 
 echo $$ >$LOCK
 
-publish() {
-    local FILES=$(cd $LOGDIR && for x in $*; do echo $DATE/$x; done)
-    tar -C $BASELOGDIR -u $FILES -f $BASELOGDIR/results.tar
-    gzip -c --rsyncable $BASELOGDIR/results.tar >$BASELOGDIR/results.tar.gz
-    rsync $BASELOGDIR/results.tar.gz flambda-mirror:
-    ssh flambda-mirror  "tar -C /var/www/flambda.ocamlpro.com/bench/ --keep-newer-files -xzf ~/results.tar.gz 2>/dev/null"
-}
+( cd $BASELOGDIR && git reset --hard && git checkout master && git checkout -B $DATE; )
 
-unpublish() {
-    mv $BASELOGDIR/$DATE $BASELOGDIR/broken/
-    tar --delete $DATE -f $BASELOGDIR/results.tar
-    ssh flambda-mirror  "rm -rf /var/www/flambda.ocamlpro.com/bench/$DATE"
-}
+git-sync() (
+    cd $BASELOGDIR
+    git push flambda-mirror:/var/www/flambda.ocamlpro.com/bench/ +HEAD:new
+    ssh flambda-mirror "cd /var/www/flambda.ocamlpro.com/bench/ && git reset new --hard"
+)
+
+publish() (
+    cd $LOGDIR
+    git add $*
+    git commit -m "Add logs ($DATE)"
+    git-sync
+)
+
+unpublish() (
+    cd $LOGDIR
+    git add .
+    git commit -m "Extra files ($DATE) -- broken build"
+    git checkout master
+    git-sync
+)
+
+git-finalise() (
+    cd $LOGDIR
+    git add .
+    git commit -m "Extra files ($DATE)"
+    git checkout master
+    git merge $DATE^ -m "Merge logs from $DATE"
+    git-sync
+)
 
 trap "unpublish; exit 2" INT
 
@@ -240,6 +258,7 @@ Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
 publish log timings summary.csv "*/*.summary"
+git-finalise
 
 cd $BASELOGDIR && echo "<html><head><title>bench index</title></head><body><ul>$(ls -d 201* latest | sed 's%\(.*\)%<li><a href="\1">\1</a></li>%')</ul></body></html>" >index.html
 
