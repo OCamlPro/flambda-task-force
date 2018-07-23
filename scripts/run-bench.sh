@@ -27,6 +27,8 @@ STARTTIME=$(date +%s)
 
 DATE=$(date +%Y-%m-%d-%H%M)
 
+DAY=${DATE%-*}
+
 BASELOGDIR=~/logs/operf
 
 LOGDIR=$BASELOGDIR/$DATE
@@ -52,6 +54,14 @@ echo $$ >$LOCK
 
 ( cd $BASELOGDIR && git reset --hard && git checkout master && git checkout -B $DATE; )
 
+if [ -n "$OPT_LAZY" ]; then
+    LOGBRANCH=lazy-$DAY
+    ( cd $BASELOGDIR && git checkout $LOGBRANCH || git checkout -b $LOGBRANCH; )
+else
+    LOGBRANCH=master
+fi
+
+
 git-sync() (
     cd $BASELOGDIR
     git push flambda-mirror:/var/www/flambda.ocamlpro.com/bench/ +HEAD:new
@@ -71,12 +81,12 @@ unpublish() (
     if [ $# -gt 0 ] && [ "$1" = "--wipe" ]; then
         git reset --hard
         rm -rf $DATE
-        git checkout master
+        git checkout $LOGBRANCH
         git branch -D $DATE || true
     else
         git add $DATE
         git commit -m "Extra files ($DATE) -- broken build"
-        git checkout master
+        git checkout $LOGBRANCH
     fi
     git-sync
 )
@@ -85,7 +95,7 @@ git-finalise() (
     cd $LOGDIR
     git add .
     git commit -m "Extra files ($DATE)"
-    git checkout master
+    git checkout $LOGBRANCH
     git merge $DATE^ -m "Merge logs from $DATE"
     git-sync
 )
