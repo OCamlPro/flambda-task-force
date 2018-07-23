@@ -61,15 +61,23 @@ git-sync() (
 publish() (
     cd $LOGDIR
     git add $*
+    git add -u .
     git commit -m "Add logs ($DATE)"
     git-sync
 )
 
 unpublish() (
-    cd $LOGDIR
-    git add .
-    git commit -m "Extra files ($DATE) -- broken build"
-    git checkout master
+    cd $BASELOGDIR
+    if [ $# -gt 0 ] && [ "$1" = "--wipe" ]; then
+        git reset --hard
+        rm -rf $DATE
+        git checkout master
+        git branch -D $DATE || true
+    else
+        git add $DATE
+        git commit -m "Extra files ($DATE) -- broken build"
+        git checkout master
+    fi
     git-sync
 )
 
@@ -163,7 +171,7 @@ done
 if [ -n "$OPT_LAZY" ] && [ "$HAS_CHANGES" -ne 0 ]; then
     if [ "${#CHANGED_SWITCHES[*]}" -eq 0 ] ; then
         echo "Lazy mode, no changes: not running benches"
-        unpublish
+        unpublish --wipe
         exit 0
     else
         echo "Lazy mode, only running benches on: ${CHANGED_SWITCHES[*]}"
