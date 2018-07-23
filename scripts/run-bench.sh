@@ -225,11 +225,11 @@ if [ -z "$OPT_NOWAIT" ]; then
     while [ $(loadavg) -gt 60 ]; do
         if [ $(($(date +%s) - STARTTIME)) -gt $((3600 * 12)) ]; then
             echo "COULD NOT START FOR THE PAST 12 HOURS; ABORTING RUN" >&2
-            unpublish
+            unpublish --wipe
             exit 10
         else
-            echo "System load detected, waiting to run bench (retrying in 5 minutes)"
-            wall "It's BENCH STARTUP TIME, but the load is too high. Please clear the way!"
+            echo 'System load detected, waiting to run bench (retrying in 5 minutes)'
+            wall "Its BENCH STARTUP TIME, but the load is too high. Please clear the way"'!'
             sleep 300
         fi
     done
