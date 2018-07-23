@@ -52,7 +52,7 @@ trap "rm $LOCK" EXIT
 
 echo $$ >$LOCK
 
-( cd $BASELOGDIR && git reset --hard && git checkout master && git checkout -B $DATE; )
+( cd $BASELOGDIR && git reset --hard && git checkout master; )
 
 if [ -n "$OPT_LAZY" ]; then
     LOGBRANCH=lazy-$DAY
@@ -61,6 +61,7 @@ else
     LOGBRANCH=master
 fi
 
+( cd $BASELOGDIR && git checkout -B $DATE; )
 
 git-sync() (
     cd $BASELOGDIR
@@ -85,6 +86,7 @@ unpublish() (
         git branch -D $DATE || true
     else
         git add $DATE
+        rm $LOGDIR/log # otherwise the checkout fails!
         git commit -m "Extra files ($DATE) -- broken build"
         git checkout $LOGBRANCH
     fi
@@ -94,6 +96,7 @@ unpublish() (
 git-finalise() (
     cd $LOGDIR
     git add .
+    rm $LOGDIR/log # otherwise the checkout fails!
     git commit -m "Extra files ($DATE)"
     git checkout $LOGBRANCH
     git merge $DATE^ -m "Merge logs from $DATE"
@@ -276,8 +279,8 @@ Total: $(hours $((UPGRADE_TIME + BENCH_TIME)))
 EOF
 
 publish log timings summary.csv "*/*.summary"
+echo "Done"
+
 git-finalise
 
 cd $BASELOGDIR && echo "<html><head><title>bench index</title></head><body><ul>$(ls -d 201* latest | sed 's%\(.*\)%<li><a href="\1">\1</a></li>%')</ul></body></html>" >index.html
-
-echo "Done"
