@@ -730,7 +730,7 @@ let index basedir =
                 SSet.add Filename.(basename (chop_extension f)) switches,
                 SSet.add Filename.(basename (dirname f)) all_benches
               else switches, all_benches)
-            (SSet.empty, SSet.empty)
+            (SSet.empty, all_benches)
             d
         in
         if SSet.is_empty switches &&
