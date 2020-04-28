@@ -66,6 +66,7 @@ fi
 git-sync() (
     cd $BASELOGDIR
     git push flambda-mirror:/var/www/flambda.ocamlpro.com/bench/ +HEAD:new
+    git push git@gitlab.ocamlpro.com/OCamlPro/ocaml-bench-logs +HEAD:master
     ssh flambda-mirror "cd /var/www/flambda.ocamlpro.com/bench/ && git reset new --hard"
 )
 
